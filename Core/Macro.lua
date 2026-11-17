@@ -1,7 +1,7 @@
 -- Macro: keeps one account-wide macro, "BiscuitBreak", pointed at the food and
 -- drink Scan picked. Body and LooksLikeOurs are pure functions, tested in
 -- tests/macro_test.lua.
--- Rules learned from other addons (see plan.md, "Writing the macro"):
+-- Rules learned from other addons:
 --   * find the macro by name before every write: the game sorts macros by
 --     name, so a stored index goes stale when any macro is created or deleted;
 --   * write only when the text differs from what the macro holds now, because

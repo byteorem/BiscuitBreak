@@ -4,7 +4,6 @@ package-as: BiscuitBreak
 ignore:
   - tools
   - tests
-  - plan.md
   - README.md
   - .luacheckrc
   - blink.toml

@@ -9,7 +9,7 @@ Usage:
 
 The output lists every food and drink item with what it restores over its full
 duration and the level it needs, plus the effects (auras) the eating bar
-watches for. See plan.md, "The food list".
+watches for.
 """
 
 from __future__ import annotations
