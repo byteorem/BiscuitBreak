@@ -1,6 +1,17 @@
 ## Interface: 16001
+## AllowLoadGameType: camelot
 ## Title: BiscuitBreak
+## Notes: One macro that eats and drinks with the strongest food in your bags, and a bar that turns green when you are full.
 ## Author: byteorem
 ## Version: 0.0.1
+## IconTexture: Interface\Icons\inv_misc_food_73cinnamonroll
+## SavedVariables: BiscuitBreakDB
 
+Core\Locale.lua
+Data\Food.lua
+Core\Scan.lua
+Core\Macro.lua
+Core\Meal.lua
+UI\Bar.lua
+UI\Options.lua
 BiscuitBreak.lua
