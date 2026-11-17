@@ -1,0 +1,10 @@
+package-as: BiscuitBreak
+
+# Development files that players do not need.
+ignore:
+  - tools
+  - tests
+  - plan.md
+  - README.md
+  - .luacheckrc
+  - blink.toml
