@@ -4,7 +4,7 @@
 ## Notes: One macro that eats and drinks with the strongest food in your bags, and a bar that turns green when you are full.
 ## Author: byteorem
 ## Version: 0.0.1
-## IconTexture: Interface\Icons\inv_misc_food_73cinnamonroll
+## IconTexture: Interface\AddOns\BiscuitBreak\Media\Icon.tga
 ## SavedVariables: BiscuitBreakDB
 
 Libs\LibStub.lua
