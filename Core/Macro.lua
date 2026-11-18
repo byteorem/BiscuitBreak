@@ -1,6 +1,5 @@
--- Macro: keeps one account-wide macro, "BiscuitBreak", pointed at the food and
--- drink Scan picked. Body and LooksLikeOurs are pure functions, tested in
--- tests/macro_test.lua.
+-- Macro: keeps one account-wide macro, pointed at the food and
+-- drink Scan picked.
 -- Rules learned from other addons:
 --   * find the macro by name before every write: the game sorts macros by
 --     name, so a stored index goes stale when any macro is created or deleted;
@@ -15,7 +14,8 @@ ns.Macro = Macro
 
 local L = ns.L
 
-local NAME = "BiscuitBreak"
+local NAME = "_BB_Meal"
+local LEGACY_NAME = "BiscuitBreak"
 -- A fixed icon and no #showtooltip line, so the button always looks the same.
 local ICON = "inv_misc_food_73cinnamonroll"
 local MAX_LENGTH = 255
@@ -33,15 +33,11 @@ function Macro.Body(food, drink)
     return table.concat(lines, "\n")
 end
 
--- True when a macro's text is something this addon would have written: empty,
--- or nothing but "/use item:<number>" lines. A macro of the same name with
--- any other text belongs to the player and is left alone.
-function Macro.LooksLikeOurs(text)
-    if text == nil or text == "" then return true end
-    for line in (text .. "\n"):gmatch("(.-)\r?\n") do
-        if line ~= "" and not line:match("^/use item:%d+$") then return false end
+local function GeneralMacroIndex(name)
+    local count = GetNumMacros()
+    for index = 1, count do
+        if GetMacroInfo(index) == name then return index end
     end
-    return true
 end
 
 local function WarnOnce(key, message)
@@ -64,8 +60,9 @@ local function Create(body)
     end
     -- A nil fourth argument makes the macro account-wide (the General tab).
     local ok, err = pcall(CreateMacro, NAME, ICON, body, nil)
-    if ok then
-        ns.Print(L["Created the BiscuitBreak macro. Open /macro, find it on the General tab and drag it to a bar."])
+    if ok and GeneralMacroIndex(NAME) then
+        ns.db.macroName, ns.db.lastMacroBody = nil, nil
+        ns.Print(string.format(L["Open /macro and drag %s from the General tab to your action bar."], NAME))
     else
         WarnOnce("create", string.format(L["Could not create the macro: %s"], tostring(err)))
     end
@@ -86,24 +83,31 @@ function Macro.Update()
     local body = Macro.Body(ns.Scan.picks.food, ns.Scan.picks.drink)
     if #body > MAX_LENGTH then return end
 
-    -- 0, not nil, means there is no macro of that name.
-    local index = GetMacroIndexByName(NAME)
-    if index == 0 then
-        Create(body)
+    local index = GeneralMacroIndex(NAME)
+    local rename
+    if not index then
+        -- Reuse the old button if its saved contents identify it as ours.
+        if ns.db.lastMacroBody then
+            index = GeneralMacroIndex(ns.db.macroName or LEGACY_NAME)
+        end
+        if not index or (select(3, GetMacroInfo(index)) or "") ~= ns.db.lastMacroBody then
+            Create(body)
+            return
+        end
+        rename = NAME
+    end
+
+    if not rename and (select(3, GetMacroInfo(index)) or "") == body then
+        ns.db.macroName, ns.db.lastMacroBody = nil, nil
         return
     end
-    local _, _, current = GetMacroInfo(index)
-    if current == body then return end
-    if not Macro.LooksLikeOurs(current) then
-        WarnOnce(
-            "foreign",
-            L["A macro named BiscuitBreak already exists with other text, so it was left alone. Rename or delete it."]
-        )
-        return
+    local ok, err = pcall(EditMacro, index, rename, nil, body)
+    local updated = GeneralMacroIndex(NAME)
+    if ok and updated and (select(3, GetMacroInfo(updated)) or "") == body then
+        ns.db.macroName, ns.db.lastMacroBody = nil, nil
+    else
+        WarnOnce("edit", string.format(L["Could not update the macro: %s"], tostring(err)))
     end
-    -- nil name and icon keep the ones the macro has.
-    local ok, err = pcall(EditMacro, index, nil, nil, body)
-    if not ok then WarnOnce("edit", string.format(L["Could not update the macro: %s"], tostring(err))) end
 end
 
 -- Combat ended: do the write that was waiting.
