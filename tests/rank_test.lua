@@ -91,5 +91,22 @@ Check("found lists every carried item", #found, 3)
 Check("found is strongest first", found[1].id, QUAIL)
 Check("found marks food you can't use yet", found[1].usable, false)
 
+local Order = ns.Scan.Order
+local order
+
+food, drink, found = Rank(Carry(JERKY, 5, RYE, 20, MUTTON, 4, QUAIL, 2, WATER, 3), 20, 1000, 1000, true, ns.Food)
+order = Order(found, "health")
+Check("order lists only what restores health", #order, 4)
+Check("order starts with the pick", order[1].id, food)
+Check("order breaks a tie like the pick", order[2].id, RYE)
+Check("order ends the usable food with the weakest", order[3].id, JERKY)
+Check("order puts food above your level last", order[4].id, QUAIL)
+order = Order(found, "mana")
+Check("order lists only what restores mana", #order, 1)
+Check("order starts with the drink pick", order[1].id, drink)
+
+order = Order(select(3, Rank(Carry(ROOT, 5), 60, 3000, 3000, true, ns.Food)), "mana")
+Check("one item is on both orders", order[1].id, ROOT)
+
 print(string.format("%d checks, %d failed", count, failures))
 os.exit(failures == 0 and 0 or 1)

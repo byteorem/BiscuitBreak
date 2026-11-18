@@ -64,6 +64,22 @@ function Scan.Rank(carried, level, maxHealth, maxMana, hasMana, food)
     return bestFood and bestFood.id, bestDrink and bestDrink.id, found
 end
 
+-- found: the list Rank returns. key: "health" or "mana".
+-- Returns every item on it that restores key, in the order the macro would
+-- turn to them: the pick first, then what it falls back to as stacks run
+-- out. Items above your level come last.
+function Scan.Order(found, key)
+    local list = {}
+    for i = 1, #found do
+        if found[i][key] > 0 then list[#list + 1] = found[i] end
+    end
+    table.sort(list, function(a, b)
+        if a.usable ~= b.usable then return a.usable end
+        return Beats(a, b, key)
+    end)
+    return list
+end
+
 -- Hidden ("secret") values cannot be compared, not even to nil, so test for
 -- them before anything else.
 local function Readable(value)
