@@ -1,8 +1,9 @@
 -- One meal timer with health and mana ticks. The client positions each tick
 -- and reveals the full-resource overlay without exposing current HP or mana.
--- The bar is drawn flat: a plain fill inside a dark edge, under a soft shade.
--- Every still piece is sized and placed on whole screen pixels, so its edges
--- stay sharp at any scale, and the client moves the fill itself.
+-- Two styles: "Blizzard" draws it with the game's own cast bar art, and
+-- "Flat" as a plain fill inside a dark edge, under a soft shade. Every still
+-- piece is sized and placed on whole screen pixels, so its edges stay sharp
+-- at any scale, and the client moves the fill itself.
 
 local _, ns = ...
 
@@ -25,6 +26,21 @@ local EDGE_COLOR = { 0.03, 0.03, 0.03 }
 local SHADE = 0.35
 local SPARK_ALPHA = 0.7
 
+-- The client's cast bar art, for the Blizzard style. The text box holds the
+-- meal's name under the bar, as the game's cast bar holds the spell's.
+local ART = {
+    fill = "ui-castingbar-filling-standard",
+    full = "ui-castingbar-filling-channel",
+    back = "ui-castingbar-background",
+    frame = "ui-castingbar-frame",
+    spark = "ui-castingbar-pip",
+}
+local TEXT_BOX = "ui-castingbar-textbox"
+-- How far the frame art reaches past the fill at the sides and the bottom.
+local FRAME_REACH = 2
+-- Space under the bar for the text box, and its height.
+local TEXT_GAP, TEXT_BOX_HEIGHT = 1, 16
+
 -- Sizes before they are rounded to whole screen pixels.
 local EDGE = 1
 local TICK_WIDTH = 2
@@ -42,6 +58,10 @@ local GLIDE = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Expone
 local PREDICT_LIMIT = 5
 
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
+-- Seconds the bar takes to fade in, and to fade out after holding still
+-- for FADE_DELAY at the end of a meal.
+local FADE_IN, FADE_OUT, FADE_DELAY = 0.15, 0.4, 0.3
+
 -- Space kept clear around the preview inside its box.
 local PREVIEW_PAD = 12
 
@@ -68,6 +88,27 @@ local function CanTimeFill(statusBar)
         and statusBar.SetTimerDuration ~= nil
         and Enum.StatusBarTimerDirection ~= nil
         and Enum.StatusBarInterpolation ~= nil
+end
+
+local function HasAtlas(name)
+    return C_Texture ~= nil and C_Texture.GetAtlasInfo ~= nil and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
+-- True when the client has every piece of the cast bar art. Asked once.
+local hasArt
+local function HasArt()
+    if hasArt == nil then
+        hasArt = true
+        for _, name in pairs(ART) do
+            if not HasAtlas(name) then hasArt = false end
+        end
+    end
+    return hasArt
+end
+
+-- True when the saved style is Blizzard and the client can draw it.
+local function UsesArt()
+    return ns.db.barStyle == "Blizzard" and HasArt()
 end
 
 -- Created once and reused.
@@ -160,9 +201,9 @@ local function NewBar(parent, name)
     bar.frame = frame
 
     -- The dark edge is the frame itself, showing around the timer set into it.
-    local edge = frame:CreateTexture(nil, "BACKGROUND")
-    edge:SetAllPoints()
-    Paint(edge, EDGE_COLOR)
+    bar.edge = frame:CreateTexture(nil, "BACKGROUND")
+    bar.edge:SetAllPoints()
+    Paint(bar.edge, EDGE_COLOR)
 
     -- Look gives the timer its texture and colour.
     local timer = CreateFrame("StatusBar", nil, frame)
@@ -179,6 +220,9 @@ local function NewBar(parent, name)
     bar.spark = timer:CreateTexture(nil, "OVERLAY")
     Paint(bar.spark, { 1, 1, 1 }, SPARK_ALPHA)
     Glide(bar.spark)
+    -- The cast bar's spark, for the Blizzard style.
+    bar.pip = timer:CreateTexture(nil, "OVERLAY")
+    Glide(bar.pip)
 
     -- The icon sits left of the bar inside the same dark edge.
     bar.iconEdge = frame:CreateTexture(nil, "BACKGROUND")
@@ -201,10 +245,10 @@ local function NewBar(parent, name)
     art:SetFrameLevel(level + 1)
     -- Clear at the top and darker towards the bottom, over fill and
     -- background alike, so the flat colours get some depth.
-    local shade = art:CreateTexture(nil, "ARTWORK")
-    shade:SetAllPoints()
-    shade:SetColorTexture(1, 1, 1, 1)
-    shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, SHADE), CreateColor(0, 0, 0, 0))
+    bar.shade = art:CreateTexture(nil, "ARTWORK")
+    bar.shade:SetAllPoints()
+    bar.shade:SetColorTexture(1, 1, 1, 1)
+    bar.shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, SHADE), CreateColor(0, 0, 0, 0))
 
     -- Transparent status bars let the client position ticks from secret values.
     bar.healthMark = NewMarker(timer, level + 2, HEALTH_COLOR, "RIGHT")
@@ -214,15 +258,16 @@ local function NewBar(parent, name)
     overlay:SetAllPoints(timer)
     overlay:SetFrameLevel(level + 3)
 
+    -- The cast bar's frame and text box, for the Blizzard style. Above the
+    -- ticks, so the frame's rim covers their ends.
+    bar.border = overlay:CreateTexture(nil, "BORDER")
+    bar.textBox = overlay:CreateTexture(nil, "BORDER")
+
     -- A font string needs its font at creation: SetText without one is an
-    -- error on this client.
+    -- error on this client. Look places both.
     bar.nameText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.nameText:SetPoint("LEFT", 4, 0)
-    bar.nameText:SetJustifyH("LEFT")
-    bar.timeText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.timeText:SetPoint("RIGHT", -4, 0)
-    bar.nameText:SetPoint("RIGHT", bar.timeText, "LEFT", -4, 0)
     bar.nameText:SetWordWrap(false)
+    bar.timeText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 
     return bar
 end
@@ -231,9 +276,14 @@ end
 local function Look(bar)
     local db = ns.db
     local timer = bar.timer
-    local texture = ns.Media.Fetch("statusbar", db.barTexture) or FLAT
+    local blizzard = UsesArt()
+    bar.blizzard = blizzard
+    -- The name goes under the bar in the cast bar's text box, when the
+    -- client has one.
+    bar.textBelow = blizzard and HasAtlas(TEXT_BOX)
+
+    local texture = blizzard and FLAT or ns.Media.Fetch("statusbar", db.barTexture) or FLAT
     timer:SetStatusBarTexture(texture)
-    timer:SetStatusBarColor(db.barColor[1], db.barColor[2], db.barColor[3])
     -- Setting the texture can hand the timer a new fill, so what hangs off
     -- the fill is put back on it.
     local fill = timer:GetStatusBarTexture()
@@ -241,8 +291,49 @@ local function Look(bar)
     bar.spark:ClearAllPoints()
     bar.spark:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
     bar.spark:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
-    bar.green:SetTexture(texture)
-    bar.green:SetVertexColor(db.fullColor[1], db.fullColor[2], db.fullColor[3])
+    bar.pip:ClearAllPoints()
+    bar.pip:SetPoint("CENTER", fill, "RIGHT", 0, 0)
+
+    if blizzard then
+        -- The game's colours: its gold fill, and its green channel fill once
+        -- you are full.
+        fill:SetAtlas(ART.fill)
+        timer:SetStatusBarColor(1, 1, 1)
+        bar.timer.back:SetAtlas(ART.back)
+        bar.green:SetAtlas(ART.full)
+        bar.green:SetVertexColor(1, 1, 1)
+        bar.pip:SetAtlas(ART.spark)
+        bar.border:SetAtlas(ART.frame)
+        if bar.textBelow then bar.textBox:SetAtlas(TEXT_BOX) end
+    else
+        timer:SetStatusBarColor(db.barColor[1], db.barColor[2], db.barColor[3])
+        Paint(bar.timer.back, BACK_COLOR)
+        bar.green:SetTexture(texture)
+        bar.green:SetVertexColor(db.fullColor[1], db.fullColor[2], db.fullColor[3])
+    end
+    bar.edge:SetShown(not blizzard)
+    bar.shade:SetShown(not blizzard)
+    bar.spark:SetShown(not blizzard)
+    bar.pip:SetShown(blizzard)
+    bar.border:SetShown(blizzard)
+    bar.textBox:SetShown(bar.textBelow)
+
+    local name, time = bar.nameText, bar.timeText
+    name:ClearAllPoints()
+    time:ClearAllPoints()
+    time:SetPoint("RIGHT", timer, "RIGHT", -4, 0)
+    if bar.textBelow then
+        name:SetPoint("LEFT", bar.textBox, "LEFT", 6, 1)
+        name:SetPoint("RIGHT", bar.textBox, "RIGHT", -6, 1)
+        name:SetJustifyH("CENTER")
+    else
+        -- The frame art's top rim covers the fill's top edge, so text sits
+        -- a pixel lower to stay centred on what shows.
+        local y = blizzard and -1 or 0
+        name:SetPoint("LEFT", timer, "LEFT", 4, y)
+        name:SetPoint("RIGHT", time, "LEFT", -4, 0)
+        name:SetJustifyH("LEFT")
+    end
 
     local stock = GameFontHighlightSmall:GetFont()
     local font = db.barFont ~= STOCK_FONT and ns.Media.Fetch("font", db.barFont) or stock
@@ -254,7 +345,8 @@ local function Look(bar)
     end
 
     bar.icon:SetShown(db.barIcon)
-    bar.iconEdge:SetShown(db.barIcon)
+    -- The cast bar's icon has no edge of its own.
+    bar.iconEdge:SetShown(db.barIcon and not blizzard)
 end
 
 -- Scales a bar and sizes its pieces from the saved width and height, each
@@ -264,15 +356,36 @@ local function Size(bar, scale)
     frame:SetScale(scale)
     local pixel = Pixel(frame)
     local width, height = Snap(ns.db.barWidth, pixel), Snap(ns.db.barHeight, pixel)
-    local edge = Snap(EDGE, pixel)
+    -- The cast bar art draws its own rim, so its fill takes the whole frame.
+    local edge = bar.blizzard and 0 or Snap(EDGE, pixel)
     frame:SetSize(width, height)
     timer:ClearAllPoints()
     timer:SetPoint("TOPLEFT", edge, -edge)
     timer:SetPoint("BOTTOMRIGHT", -edge, edge)
     bar.spark:SetWidth(Snap(SPARK_WIDTH, pixel))
 
+    if bar.blizzard then
+        local reach = Snap(FRAME_REACH, pixel)
+        bar.timer.back:ClearAllPoints()
+        bar.timer.back:SetPoint("TOPLEFT", -pixel, pixel)
+        bar.timer.back:SetPoint("BOTTOMRIGHT", pixel, -pixel)
+        bar.border:ClearAllPoints()
+        bar.border:SetPoint("TOPLEFT", timer, "TOPLEFT", -reach, 0)
+        bar.border:SetPoint("BOTTOMRIGHT", timer, "BOTTOMRIGHT", reach, -reach)
+        bar.pip:SetSize(Snap(5, pixel), height + Snap(4, pixel))
+        bar.textBox:ClearAllPoints()
+        bar.textBox:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -Snap(TEXT_GAP, pixel))
+        bar.textBox:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -Snap(TEXT_GAP, pixel))
+        bar.textBox:SetHeight(Snap(TEXT_BOX_HEIGHT, pixel))
+    else
+        bar.timer.back:ClearAllPoints()
+        bar.timer.back:SetAllPoints()
+    end
+
+    -- Past the frame art's reach in the Blizzard style.
+    local iconGap = ICON_GAP + (bar.blizzard and FRAME_REACH or 0)
     bar.iconEdge:ClearAllPoints()
-    bar.iconEdge:SetPoint("TOPRIGHT", frame, "TOPLEFT", -Snap(ICON_GAP, pixel), 0)
+    bar.iconEdge:SetPoint("TOPRIGHT", frame, "TOPLEFT", -Snap(iconGap, pixel), 0)
     bar.iconEdge:SetSize(height, height)
     bar.icon:ClearAllPoints()
     bar.icon:SetPoint("TOPLEFT", bar.iconEdge, "TOPLEFT", edge, -edge)
@@ -332,16 +445,19 @@ local function FitPreview()
     local frame, box = preview.frame, preview.box
     local width, height = ns.db.barWidth, ns.db.barHeight
     -- The icon hangs off the left of the frame.
-    local iconSpace = ns.db.barIcon and height + ICON_GAP or 0
+    Look(preview)
+    local blizzard = preview.blizzard
+    local iconSpace = ns.db.barIcon and height + ICON_GAP + (blizzard and FRAME_REACH or 0) or 0
+    -- The text box hangs under the bar.
+    local below = preview.textBelow and TEXT_GAP + TEXT_BOX_HEIGHT or 0
     local scale = math.min(
         ns.db.barScale,
         (box:GetWidth() - 2 * PREVIEW_PAD) / (width + iconSpace),
-        (box:GetHeight() - 2 * PREVIEW_PAD) / height
+        (box:GetHeight() - 2 * PREVIEW_PAD) / (height + below)
     )
-    Look(preview)
     Size(preview, scale)
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", box, "CENTER", iconSpace / 2, 0)
+    frame:SetPoint("CENTER", box, "CENTER", iconSpace / 2, below / 2)
     AlignToPixels(frame, box)
 end
 
@@ -549,8 +665,48 @@ local function Build()
         self:UnregisterEvent("UNIT_POWER_FREQUENT")
     end)
 
+    -- The bar fades in when a meal starts and out when it ends.
+    main.fadeIn = frame:CreateAnimationGroup()
+    local appear = main.fadeIn:CreateAnimation("Alpha")
+    appear:SetFromAlpha(0)
+    appear:SetToAlpha(1)
+    appear:SetDuration(FADE_IN)
+    main.fadeIn:SetToFinalAlpha(true)
+    main.fadeOut = frame:CreateAnimationGroup()
+    local vanish = main.fadeOut:CreateAnimation("Alpha")
+    vanish:SetFromAlpha(1)
+    vanish:SetToAlpha(0)
+    vanish:SetDuration(FADE_OUT)
+    vanish:SetStartDelay(FADE_DELAY)
+    main.fadeOut:SetScript("OnFinished", function()
+        frame:Hide()
+        frame:SetAlpha(1)
+    end)
+
     if CanDrawResources() then Curves() end
     Bar.Apply()
+end
+
+-- Shows the bar, fading it in unless it is already up.
+local function Appear()
+    local frame = main.frame
+    if main.fadeOut:IsPlaying() then
+        -- Stopping puts back the full alpha it started from.
+        main.fadeOut:Stop()
+        return
+    end
+    if frame:IsShown() then return end
+    frame:SetAlpha(0)
+    frame:Show()
+    main.fadeIn:Play()
+end
+
+-- Fades the bar out and hides it.
+local function Vanish()
+    if not main.frame:IsShown() or main.fadeOut:IsPlaying() then return end
+    main.fadeIn:Stop()
+    main.frame:SetAlpha(1)
+    main.fadeOut:Play()
 end
 
 local function ShowMeal(meal)
@@ -579,14 +735,14 @@ end
 local function Render()
     if current then
         ShowMeal(current)
-        main.frame:Show()
+        Appear()
     elseif unlocked then
         -- Something to drag while you are not eating.
         tracking.health, tracking.mana = false, false
         ShowSample(main, L["Drag me"], "")
-        main.frame:Show()
+        Appear()
     else
-        main.frame:Hide()
+        Vanish()
     end
 end
 
