@@ -14,7 +14,7 @@ local L = ns.L
 local LOGO = "Interface\\AddOns\\BiscuitBreak\\Media\\Icon.tga"
 local QUESTION_ICON = 134400
 
-local WINDOW_WIDTH, WINDOW_HEIGHT = 520, 610
+local WINDOW_WIDTH, WINDOW_HEIGHT = 520, 638
 local PAD = 20
 -- Pages start under the title bar and the tabs.
 local PAGE_TOP = -65
@@ -557,6 +557,10 @@ local function BuildBarPage(page)
     Checkbox(form, L["Show bar"], L["Show the recovery bar while you eat or drink."], showGet, showSet, ns.SyncBar)
     local iconGet, iconSet = Saved("barIcon")
     Checkbox(form, L["Show icon"], L["Show the food or drink's icon at the left of the bar."], iconGet, iconSet,
+        ns.Bar.Apply)
+    local itemsGet, itemsSet = Saved("barItems")
+    Checkbox(form, L["Show items"],
+        L["Show a small icon for each food and drink above the right end of the bar."], itemsGet, itemsSet,
         ns.Bar.Apply)
 
     Heading(form, L["Size"])

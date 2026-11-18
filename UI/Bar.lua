@@ -46,6 +46,10 @@ local EDGE = 1
 local TICK_WIDTH = 2
 local SPARK_WIDTH = 1
 local ICON_GAP = 3
+-- The small food and drink icons above the bar's top right: their size, the
+-- space between them and the space under them.
+local ITEM_SIZE, ITEM_SPACING, ITEM_GAP = 14, 2, 3
+local MAX_ITEMS = 4
 
 -- A duration this long stands still: the sample bar.
 local FROZEN = 1e6
@@ -58,6 +62,7 @@ local GLIDE = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Expone
 local PREDICT_LIMIT = 5
 
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
+local SAMPLE_ITEMS = { SAMPLE_ICON, "Interface\\Icons\\inv_drink_07" }
 -- Seconds the bar takes to fade in, and to fade out after holding still
 -- for FADE_DELAY at the end of a meal.
 local FADE_IN, FADE_OUT, FADE_DELAY = 0.15, 0.4, 0.3
@@ -269,7 +274,40 @@ local function NewBar(parent, name)
     bar.nameText:SetWordWrap(false)
     bar.timeText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 
+    -- The food and drink icons, each in a dark edge. Size places them.
+    bar.items = {}
+    for i = 1, MAX_ITEMS do
+        local edge = frame:CreateTexture(nil, "BACKGROUND")
+        Paint(edge, EDGE_COLOR)
+        edge:Hide()
+        local icon = frame:CreateTexture(nil, "ARTWORK")
+        icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        icon:Hide()
+        bar.items[i] = { edge = edge, icon = icon }
+    end
+    bar.itemIcons = {}
+
     return bar
+end
+
+-- Shows one small icon per entry of bar.itemIcons, right to left from the
+-- bar's right end, when the setting is on.
+local function ShowItems(bar)
+    local list = ns.db.barItems and bar.itemIcons or {}
+    for i, item in ipairs(bar.items) do
+        local icon = list[i]
+        if icon then item.icon:SetTexture(icon) end
+        item.icon:SetShown(icon ~= nil)
+        item.edge:SetShown(icon ~= nil)
+    end
+end
+
+local function SetItems(bar, icons)
+    wipe(bar.itemIcons)
+    for i, icon in ipairs(icons or {}) do
+        bar.itemIcons[i] = icon
+    end
+    ShowItems(bar)
 end
 
 -- Gives a bar its saved texture, colours, font and icon.
@@ -347,6 +385,7 @@ local function Look(bar)
     bar.icon:SetShown(db.barIcon)
     -- The cast bar's icon has no edge of its own.
     bar.iconEdge:SetShown(db.barIcon and not blizzard)
+    ShowItems(bar)
 end
 
 -- Scales a bar and sizes its pieces from the saved width and height, each
@@ -390,6 +429,18 @@ local function Size(bar, scale)
     bar.icon:ClearAllPoints()
     bar.icon:SetPoint("TOPLEFT", bar.iconEdge, "TOPLEFT", edge, -edge)
     bar.icon:SetPoint("BOTTOMRIGHT", bar.iconEdge, "BOTTOMRIGHT", -edge, edge)
+
+    -- The food and drink icons, from the bar's top right leftwards.
+    local itemSize, itemEdge = Snap(ITEM_SIZE, pixel), Snap(EDGE, pixel)
+    local spacing, gap = Snap(ITEM_SPACING, pixel), Snap(ITEM_GAP, pixel)
+    for i, item in ipairs(bar.items) do
+        item.edge:ClearAllPoints()
+        item.edge:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -(i - 1) * (itemSize + spacing), gap)
+        item.edge:SetSize(itemSize, itemSize)
+        item.icon:ClearAllPoints()
+        item.icon:SetPoint("TOPLEFT", item.edge, "TOPLEFT", itemEdge, -itemEdge)
+        item.icon:SetPoint("BOTTOMRIGHT", item.edge, "BOTTOMRIGHT", -itemEdge, itemEdge)
+    end
 
     -- The tracks stop a tick short of each end of the timer, so a tick at
     -- either end stays inside the edge.
@@ -435,6 +486,7 @@ local function ShowSample(bar, name, time)
     bar.gateHealth:SetAlpha(0)
     bar.gateMana:SetAlpha(0)
     bar.icon:SetTexture(SAMPLE_ICON)
+    SetItems(bar, SAMPLE_ITEMS)
     bar.nameText:SetText(name)
     bar.timeText:SetText(time)
 end
@@ -450,14 +502,16 @@ local function FitPreview()
     local iconSpace = ns.db.barIcon and height + ICON_GAP + (blizzard and FRAME_REACH or 0) or 0
     -- The text box hangs under the bar.
     local below = preview.textBelow and TEXT_GAP + TEXT_BOX_HEIGHT or 0
+    -- The food and drink icons stand over it.
+    local above = ns.db.barItems and ITEM_GAP + ITEM_SIZE or 0
     local scale = math.min(
         ns.db.barScale,
         (box:GetWidth() - 2 * PREVIEW_PAD) / (width + iconSpace),
-        (box:GetHeight() - 2 * PREVIEW_PAD) / (height + below)
+        (box:GetHeight() - 2 * PREVIEW_PAD) / (height + below + above)
     )
     Size(preview, scale)
     frame:ClearAllPoints()
-    frame:SetPoint("CENTER", box, "CENTER", iconSpace / 2, below / 2)
+    frame:SetPoint("CENTER", box, "CENTER", iconSpace / 2, (below - above) / 2)
     AlignToPixels(frame, box)
 end
 
@@ -727,6 +781,7 @@ local function ShowMeal(meal)
     end
     RunFill(main, meal.start, math.max(meal.finish - meal.start, 0.1))
     main.icon:SetTexture(meal.icon)
+    SetItems(main, meal.icons)
     main.nameText:SetText(meal.text or "")
     OnUpdate()
     UpdateResources()

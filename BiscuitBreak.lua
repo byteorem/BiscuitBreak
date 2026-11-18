@@ -20,6 +20,8 @@ local DEFAULTS = {
     -- Font flags: "", "OUTLINE" or "THICKOUTLINE".
     barFontOutline = "",
     barIcon = true,
+    -- A small icon for each food and drink, above the bar's top right.
+    barItems = true,
     -- Colours are { red, green, blue }, each from 0 to 1.
     barColor = { 1.0, 0.62, 0.0 },
     fullColor = { 0.2, 0.78, 0.3 },

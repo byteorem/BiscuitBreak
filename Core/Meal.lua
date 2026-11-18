@@ -14,7 +14,7 @@ ns.Meal = Meal
 -- More effects than a player can have; stops a runaway loop.
 local MAX_AURAS = 255
 
-local meal = { names = {} } -- reused for every update
+local meal = { names = {}, icons = {} } -- reused for every update
 local active = false
 local queued = false
 local reported = false
@@ -31,6 +31,9 @@ local function Read(out)
     out.healthEnd, out.manaEnd = nil, nil
     for i = #out.names, 1, -1 do
         out.names[i] = nil
+    end
+    for i = #out.icons, 1, -1 do
+        out.icons[i] = nil
     end
 
     for i = 1, MAX_AURAS do
@@ -51,7 +54,16 @@ local function Read(out)
             if (rates.mp or rates.mpPct) and (not out.manaEnd or finish > out.manaEnd) then
                 out.mana, out.manaEnd = rates, finish
             end
-            if not Hidden(aura.icon) then out.icon = out.icon or aura.icon end
+            local icon = aura.icon
+            if not Hidden(icon) and icon then
+                out.icon = out.icon or icon
+                -- One small icon per food or drink, for the row above the bar.
+                local known = false
+                for n = 1, #out.icons do
+                    if out.icons[n] == icon then known = true end
+                end
+                if not known then out.icons[#out.icons + 1] = icon end
+            end
 
             local name = aura.name
             -- Test for hidden first: a hidden value cannot even be truth-tested.
