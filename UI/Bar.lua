@@ -37,6 +37,10 @@ local FROZEN = 1e6
 -- How a tick moves to a new place, where the client can ease it.
 local GLIDE = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
 
+-- The longest the health tick keeps sliding on its own after the last health
+-- update, so a wrong rate or a pause in healing cannot carry it far.
+local PREDICT_LIMIT = 5
+
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
 -- Space kept clear around the preview inside its box.
 local PREVIEW_PAD = 12
@@ -406,45 +410,76 @@ end
 -- in the bar's own seconds: it slides up the bar as you fill and gets to the
 -- end the moment you are full. So a tick ahead of the timer's fill means full
 -- before the meal ends, and one behind it means the meal ends first.
--- The place depends only on how full you are, never on the clock, so the
--- tick moves only when the resource does and only ever towards the end. A
--- wrong rate stretches or shrinks the distance left; it cannot turn the tick
--- round, and the error is gone by the time the tick arrives.
+-- The place depends on how full you are, so a wrong rate stretches or
+-- shrinks the distance left; it cannot turn the tick round, and the error is
+-- gone by the time the tick arrives. Only the health tick also looks at the
+-- clock, for the few seconds between health updates (see Place).
 -- Health and mana are hidden from addon code, so the place is a curve from
 -- your share of the resource to a share of the bar, built from numbers addon
 -- code may read; the client evaluates it and the status bar takes the answer.
-local function UpdateMarker(track, maximum, rates, isMana)
-    if (issecretvalue and issecretvalue(maximum)) or not maximum or maximum <= 0 then
-        track:Hide()
-        Forget(track)
-        return
-    end
-    -- The share of the bar it takes to fill the resource from empty.
-    local fromEmpty = maximum / Rate(rates, maximum, isMana) / (current.finish - current.start)
-    if not track.curve then track.curve = C_CurveUtil.CreateCurve() end
-    local curve = track.curve
+--
+-- reach: the share of the resource that spans the whole bar. ahead: a share
+-- of the resource counted as already regained, which slides the tick on.
+local function Shape(curve, reach, ahead)
     curve:ClearPoints()
-    if fromEmpty > 1 then
+    local leaves = 1 - reach - ahead -- where the tick leaves the start
+    local arrives = 1 - ahead -- where it gets to the end
+    if arrives <= 0 then
+        curve:AddPoint(0, 1)
+    elseif leaves > 0 then
         -- Further from full than the bar is long: the tick waits at the start.
         curve:AddPoint(0, 0)
-        curve:AddPoint(1 - 1 / fromEmpty, 0)
+        curve:AddPoint(leaves, 0)
     else
-        curve:AddPoint(0, 1 - fromEmpty)
+        curve:AddPoint(0, -leaves / reach)
     end
+    if arrives > 0 and arrives < 1 then curve:AddPoint(arrives, 1) end
     curve:AddPoint(1, 1)
+end
 
+-- Moves a shown tick to its place. The client keeps mana up to date many
+-- times a second, but health only changes when the server sends it, every
+-- few seconds. So between health updates the health tick is moved on by what
+-- you should have regained since the last one, which keeps it sliding like
+-- the mana tick instead of jumping each time health arrives.
+local function Place(track, isMana)
+    local now = GetTime()
     -- A tick that was not showing goes straight to its place; after that it
-    -- glides, so health that comes in steps does not make it jump.
+    -- glides, which also eases it back if it ran ahead of your real health.
     local glide = not track.fresh and GLIDE or nil
+    if track.fresh then track.since = now end
     track.fresh = false
+    local ahead = 0
+    if not isMana then
+        local since = math.min(math.max(now - track.since, 0), PREDICT_LIMIT)
+        ahead = track.perSecond * since
+    end
+    Shape(track.curve, track.reach, ahead)
     if isMana then
-        track:SetValue(UnitPowerPercent("player", MANA, false, curve), glide)
+        track:SetValue(UnitPowerPercent("player", MANA, false, track.curve), glide)
         -- A full resource has nothing left to wait for, so its tick goes.
         track.tick:SetAlpha(UnitPowerPercent("player", MANA, false, short))
     else
-        track:SetValue(UnitHealthPercent("player", false, curve), glide)
+        track:SetValue(UnitHealthPercent("player", false, track.curve), glide)
         track.tick:SetAlpha(UnitHealthPercent("player", false, short))
     end
+end
+
+local function UpdateMarker(track, maximum, rates, isMana)
+    local perSecond
+    if not (issecretvalue and issecretvalue(maximum)) and maximum and maximum > 0 then
+        perSecond = Rate(rates, maximum, isMana) / maximum
+    end
+    if not perSecond or perSecond <= 0 then
+        track:Hide()
+        track.reach = nil
+        Forget(track)
+        return
+    end
+    track.perSecond = perSecond
+    track.reach = perSecond * (current.finish - current.start)
+    if not track.curve then track.curve = C_CurveUtil.CreateCurve() end
+    Place(track, isMana)
     track:Show()
 end
 
@@ -470,6 +505,8 @@ local function OnUpdate()
     if not current then return end
     local now = GetTime()
     if not main.duration then main.timer:SetValue(now - current.start) end
+    local health = main.healthMark
+    if tracking.health and health.reach and health:IsShown() then Place(health, false) end
     local left = current.finish - now
     if left < 0 then left = 0 end
     main.timeText:SetFormattedText("%.1f", left)
@@ -477,6 +514,8 @@ end
 
 local function OnEvent(_, event, _, powerType)
     if event == "UNIT_POWER_FREQUENT" and powerType ~= "MANA" then return end
+    -- Fresh health from the server: stop counting it as regained ahead.
+    if event == "UNIT_HEALTH" then main.healthMark.since = GetTime() end
     UpdateResources()
 end
 
