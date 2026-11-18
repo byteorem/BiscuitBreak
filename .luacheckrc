@@ -1,6 +1,6 @@
 std = "lua51"
 max_line_length = 120
-exclude_files = { ".git" }
+exclude_files = { ".git", "Libs" }
 
 -- Globals the addon defines.
 globals = {
@@ -33,6 +33,7 @@ read_globals = {
     "GetMacroInfo",
     "GetNumMacros",
     "InCombatLockdown",
+    "LibStub",
     "MAX_ACCOUNT_MACROS",
     "NUM_BAG_SLOTS",
     "NUM_TOTAL_EQUIPPED_BAG_SLOTS",

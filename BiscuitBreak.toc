@@ -7,11 +7,17 @@
 ## IconTexture: Interface\Icons\inv_misc_food_73cinnamonroll
 ## SavedVariables: BiscuitBreakDB
 
+Libs\LibStub.lua
+Libs\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0.lua
+
 Core\Locale.lua
 Data\Food.lua
 Core\Scan.lua
 Core\Macro.lua
 Core\Meal.lua
 UI\Bar.lua
+UI\Minimap.lua
 UI\Options.lua
 BiscuitBreak.lua

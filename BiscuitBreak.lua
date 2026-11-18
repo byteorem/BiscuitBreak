@@ -46,6 +46,7 @@ function handlers.ADDON_LOADED(name)
     -- Saved settings exist only from this event on, never at file scope.
     LoadSettings()
     ns.Options.Register()
+    ns.Minimap.Sync()
 
     frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     frame:RegisterEvent("BAG_UPDATE_DELAYED")

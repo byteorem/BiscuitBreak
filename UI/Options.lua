@@ -171,7 +171,13 @@ local function Build()
 
     local useMacro =
         NewSetting(panel, "useMacro", L["Keep the BiscuitBreak macro up to date"], settings, -10, ns.Macro.Update)
-    local showBar = NewSetting(panel, "showBar", L["Show the eating bar"], useMacro, -8, ns.SyncBar)
+    -- Saved the way LibDBIcon reads it: ns.db.minimap.hide.
+    local showButton = NewCheckbox(panel, L["Show the minimap button"], useMacro, -8, function()
+        return not ns.db.minimap.hide
+    end, function(value)
+        ns.db.minimap.hide = not value
+    end, ns.Minimap.Sync)
+    local showBar = NewSetting(panel, "showBar", L["Show the eating bar"], showButton, -8, ns.SyncBar)
 
     -- Not saved: the bar locks again when the page closes.
     local unlockText = L["Unlock bar (drag it where you want it)"]

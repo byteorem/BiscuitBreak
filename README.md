@@ -2,7 +2,7 @@
 
 One macro that eats and drinks with the strongest food in your bags, and a bar that turns green when you are full.
 
-The addon creates a macro named `BiscuitBreak` on the General tab of `/macro`. Drag it to an action bar. `/bb` opens the settings.
+The addon creates a macro named `BiscuitBreak` on the General tab of `/macro`. Drag it to an action bar. `/bb` or the minimap button opens the settings.
 
 - Picks again when your bags or your level change
 - Skips food above your level
