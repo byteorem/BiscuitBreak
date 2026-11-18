@@ -28,11 +28,12 @@ local function LoadSettings()
         if type(BiscuitBreakDB[key]) ~= type(value) then BiscuitBreakDB[key] = value end
     end
     ns.db = BiscuitBreakDB
+    if type(ns.db.excludedItems) ~= "table" then ns.db.excludedItems = {} end
 end
 
 local handlers = {}
 
--- Applies the "Show the eating bar" setting: the effect event is registered
+-- Applies the "Show the recovery bar" setting: the effect event is registered
 -- only while the bar is wanted.
 function ns.SyncBar()
     if ns.db.showBar then

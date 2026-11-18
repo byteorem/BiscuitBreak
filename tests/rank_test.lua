@@ -108,5 +108,10 @@ Check("order starts with the drink pick", order[1].id, drink)
 order = Order(select(3, Rank(Carry(ROOT, 5), 60, 3000, 3000, true, ns.Food)), "mana")
 Check("one item is on both orders", order[1].id, ROOT)
 
+food, drink, found = Rank(Carry(ROOT, 1, JERKY, 1), 60, 3000, 3000, true, ns.Food, { [ROOT] = true })
+Check("excluded food falls back", food, JERKY)
+Check("excluded dual-purpose food cannot be the drink", drink, nil)
+Check("excluded item stays available to include again", Order(found, "health")[2].excluded, true)
+
 print(string.format("%d checks, %d failed", count, failures))
 os.exit(failures == 0 and 0 or 1)

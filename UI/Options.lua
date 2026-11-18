@@ -1,9 +1,4 @@
--- Options: the settings window, opened by /bb and the minimap button, and the
--- eating bar's own settings window, opened by a button on it. They are the
--- addon's own windows, not pages of the game's settings, so they can sit
--- beside the bar while you size and place it, and they open in combat. The
--- page under Esc > Options > AddOns only has a button that opens the first.
--- Neither holds logic of its own: they show what Scan found and flip switches.
+-- Item priorities and recovery bar settings share one tabbed window.
 
 local addonName, ns = ...
 
@@ -12,18 +7,12 @@ ns.Options = Options
 
 local L = ns.L
 local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local LEFT = 16
-local WINDOW_WIDTH = 420
+local WINDOW_WIDTH, WINDOW_HEIGHT = 490, 540
+local LEFT = 20
 local CONTENT_WIDTH = WINDOW_WIDTH - 2 * LEFT
--- The window's height without its two priority lists, which grow and shrink
--- with what you carry.
-local STATIC_HEIGHT = 302
--- A priority list: its label, then up to MAX_ROWS rows.
-local LABEL_HEIGHT, ROW_HEIGHT, ROW_GAP, MAX_ROWS = 16, 18, 3, 5
--- The bar's settings window, and the box in it that holds the preview.
-local BAR_PANEL_HEIGHT, PREVIEW_HEIGHT = 300, 90
+local LABEL_HEIGHT, ROW_HEIGHT, ROW_GAP, MAX_ROWS = 30, 20, 2, 5
 
-local window, barPanel
+local window
 local lists = {}
 local checkboxes = {}
 local resizeQueued = false
@@ -31,8 +20,9 @@ local resizeQueued = false
 -- One line of a priority list: its place, an icon, the item with its count,
 -- and on the right what it restores.
 local function NewRow(parent)
-    local row = CreateFrame("Frame", nil, parent)
-    row:SetSize(CONTENT_WIDTH, ROW_HEIGHT)
+    local row = CreateFrame("Button", nil, parent)
+    row:SetSize(CONTENT_WIDTH - 24, ROW_HEIGHT)
+    row:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2")
 
     row.place = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
     row.place:SetPoint("LEFT")
@@ -53,6 +43,12 @@ local function NewRow(parent)
 
     -- Hovering the row shows the item's own tooltip.
     row:EnableMouse(true)
+    row:SetScript("OnClick", function(self)
+        local id = self.itemID
+        if not id then return end
+        ns.db.excludedItems[id] = not ns.db.excludedItems[id] or nil
+        ns.Scan.Run(true)
+    end)
     row:SetScript("OnEnter", function(self)
         if not self.itemID then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -66,18 +62,27 @@ end
 -- A priority list: a label ("Food") over its rows. ShowList sets its height
 -- to the rows showing, so whatever is anchored under it moves with it.
 local function NewList(parent, label, anchor, offsetY)
-    local list = CreateFrame("Frame", nil, parent)
+    local list = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
     list:SetSize(CONTENT_WIDTH, LABEL_HEIGHT)
     list:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, offsetY)
 
-    local text = list:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-    text:SetPoint("TOPLEFT")
+    local text = list:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    text:SetPoint("TOPLEFT", 12, -8)
     text:SetText(label)
+
+    list.page = 1
+    list.nextPage = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
+    list.nextPage:SetSize(110, 20)
+    list.nextPage:SetPoint("TOPRIGHT", -8, -4)
+    list.nextPage:SetScript("OnClick", function()
+        list.page = list.page % list.pages + 1
+        Options.Refresh()
+    end)
 
     list.rows = {}
     for i = 1, MAX_ROWS do
         list.rows[i] = NewRow(list)
-        list.rows[i]:SetPoint("TOPLEFT", 0, -(LABEL_HEIGHT + (i - 1) * (ROW_HEIGHT + ROW_GAP)))
+        list.rows[i]:SetPoint("TOPLEFT", 12, -(LABEL_HEIGHT + (i - 1) * (ROW_HEIGHT + ROW_GAP)))
     end
     return list
 end
@@ -162,8 +167,9 @@ end
 -- is the brightest. An item above your level has no place and is greyed.
 local function ShowItem(row, place, item, key)
     row.itemID = item.id
+    row:EnableMouse(true)
     row.icon:SetTexture(C_Item.GetItemIconByID(item.id) or QUESTION_ICON)
-    row.icon:SetDesaturated(not item.usable)
+    row.icon:SetDesaturated(item.excluded or not item.usable)
     row.icon:Show()
     local name = C_Item.GetItemNameByID(item.id)
     if not name then
@@ -172,7 +178,11 @@ local function ShowItem(row, place, item, key)
         name = L["Loading..."]
     end
     row.text:SetText(string.format("%s  x%d", name, item.count))
-    if item.usable then
+    if item.excluded then
+        row.place:SetText("")
+        row.value:SetText(L["Excluded"])
+        Shade(row, 0.5)
+    elseif item.usable then
         row.place:SetText(place .. ".")
         -- Percentage food gives fractions; %d wants a whole number.
         local amount = math.floor(item[key] + 0.5)
@@ -189,6 +199,7 @@ end
 -- A row of plain grey text, for an empty list or for what did not fit.
 local function ShowNote(row, text)
     row.itemID = nil
+    row:EnableMouse(false)
     row.icon:Hide()
     row.place:SetText("")
     row.text:SetText(text)
@@ -200,25 +211,25 @@ end
 -- Fills a list with items, already in priority order.
 local function ShowList(list, items, key, emptyText)
     local rows = list.rows
+    list.pages = math.max(1, math.ceil(#items / MAX_ROWS))
+    list.page = math.min(list.page, list.pages)
+    list.nextPage:SetShown(list.pages > 1)
+    list.nextPage:SetText(string.format(L["Page %d/%d >"], list.page, list.pages))
+    local offset = (list.page - 1) * MAX_ROWS
     local shown
     if #items == 0 then
         ShowNote(rows[1], emptyText)
         shown = 1
     else
-        -- Too many for the rows: the last row says how many are left out.
-        shown = #items > MAX_ROWS and MAX_ROWS - 1 or #items
+        shown = math.min(MAX_ROWS, #items - offset)
         for i = 1, shown do
-            ShowItem(rows[i], i, items[i], key)
-        end
-        if shown < #items then
-            shown = shown + 1
-            ShowNote(rows[shown], string.format(L["and %d more"], #items - shown + 1))
+            ShowItem(rows[i], offset + i, items[offset + i], key)
         end
     end
     for i = shown + 1, MAX_ROWS do
         rows[i]:Hide()
     end
-    list:SetHeight(LABEL_HEIGHT + shown * (ROW_HEIGHT + ROW_GAP))
+    list:SetHeight(LABEL_HEIGHT + shown * (ROW_HEIGHT + ROW_GAP) + 3)
 end
 
 local NOTHING = {}
@@ -233,7 +244,6 @@ function Options.Refresh()
     else
         ShowList(lists.drink, NOTHING, "mana", L["Your class does not use mana"])
     end
-    window:SetHeight(STATIC_HEIGHT + lists.food:GetHeight() + lists.drink:GetHeight())
     for i = 1, #checkboxes do
         checkboxes[i]:SetChecked(checkboxes[i].get())
     end
@@ -265,28 +275,23 @@ local function NewWindow(name, title, height)
     return frame
 end
 
--- The bar's own settings: a preview in a box, the sizes, and the position.
--- While it is open the bar itself is on screen and can be dragged.
-local function BuildBarPanel()
-    barPanel = NewWindow("BiscuitBreakBarOptions", L["BiscuitBreak eating bar"], BAR_PANEL_HEIGHT)
-    -- Right of centre, the main window being left of it: the bar starts out
-    -- below the middle of the screen, between the two.
-    barPanel:SetPoint("LEFT", UIParent, "CENTER", 160, 0)
-
+local function BuildBarPanel(barPanel)
     local box = CreateFrame("Frame", nil, barPanel, "InsetFrameTemplate")
-    box:SetSize(CONTENT_WIDTH, PREVIEW_HEIGHT)
-    box:SetPoint("TOPLEFT", LEFT, -36)
+    box:SetSize(CONTENT_WIDTH, 108)
+    box:SetPoint("TOPLEFT", LEFT, -10)
     ns.Bar.NewPreview(box)
 
-    local scale = NewSlider(barPanel, "barScale", L["Scale"], box, -16, 0.5, 2, 0.05, FormatPercent)
-    local width = NewSlider(barPanel, "barWidth", L["Width"], scale, -14, 100, 400, 10, FormatPixels)
-    local height = NewSlider(barPanel, "barHeight", L["Height"], width, -14, 10, 40, 1, FormatPixels)
+    local show = NewSetting(barPanel, "showBar", L["Show the recovery bar"], box, -16, ns.SyncBar)
+    local scale = NewSlider(barPanel, "barScale", L["Scale"], show, -20, 0.5, 2, 0.05, FormatPercent)
+    local width = NewSlider(barPanel, "barWidth", L["Width"], scale, -22, 100, 400, 10, FormatPixels)
+    local height = NewSlider(barPanel, "barHeight", L["Height"], width, -22, 10, 40, 1, FormatPixels)
 
     local hint = barPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     hint:SetPoint("TOPLEFT", height, "BOTTOMLEFT", 0, -14)
     hint:SetWidth(CONTENT_WIDTH)
     hint:SetJustifyH("LEFT")
-    hint:SetText(L["The bar is on your screen while this window is open. Drag it where you want it."])
+    hint:SetText(L["Red tracks health and blue tracks mana. Each tick marks the expected refill time or effect end."]
+        .. "\n" .. L["Drag the bar on your screen to move it."])
 
     local reset = CreateFrame("Button", nil, barPanel, "UIPanelButtonTemplate")
     reset:SetSize(160, 24)
@@ -299,60 +304,72 @@ local function BuildBarPanel()
     barPanel:SetScript("OnHide", function() ns.Bar.SetUnlocked(false) end)
 end
 
-local function ToggleBarPanel()
-    if not barPanel then BuildBarPanel() end
-    barPanel:SetShown(not barPanel:IsShown())
-end
-
 local function Build()
-    -- Options.Refresh adds the height of the priority lists.
-    window = NewWindow("BiscuitBreakOptions", addonName, STATIC_HEIGHT)
-    -- Left of centre: see BuildBarPanel.
-    window:SetPoint("RIGHT", UIParent, "CENTER", -160, 0)
+    window = NewWindow("BiscuitBreakOptions", addonName, WINDOW_HEIGHT)
+    window:SetPoint("CENTER", UIParent, "CENTER", -150, 40)
 
-    local intro = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    intro:SetPoint("TOPLEFT", LEFT, -36)
+    local pages, tabs = {}, {}
+    local function SelectPage(selected)
+        for i, tab in ipairs(tabs) do
+            pages[i]:SetShown(i == selected)
+            if i == selected then
+                PanelTemplates_SelectTab(tab)
+            else
+                PanelTemplates_DeselectTab(tab)
+            end
+        end
+    end
+
+    for i, title in ipairs({ L["Food & Drink"], L["Recovery Bar"] }) do
+        local page = CreateFrame("Frame", nil, window)
+        page:SetPoint("TOPLEFT", 0, -65)
+        page:SetPoint("BOTTOMRIGHT")
+        pages[i] = page
+
+        local tab = CreateFrame("Button", nil, window, "PanelTopTabButtonTemplate")
+        tab:SetText(title)
+        PanelTemplates_TabResize(tab, 15, nil, 90)
+        if i == 1 then
+            tab:SetPoint("TOPLEFT", LEFT, -27)
+        else
+            tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 5, 0)
+        end
+        tabs[i] = tab
+        tab:SetScript("OnClick", function() SelectPage(i) end)
+    end
+
+    local priority = pages[1]
+    local intro = priority:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    intro:SetPoint("TOPLEFT", LEFT, -10)
     intro:SetWidth(CONTENT_WIDTH)
     intro:SetJustifyH("LEFT")
-    intro:SetText(L["Your BiscuitBreak macro always uses the strongest food and drink in your bags."])
+    intro:SetText(L["Click a food or drink to exclude it from the macro. Click an excluded item to include it again."])
 
-    local heading = window:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    heading:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -20)
-    heading:SetText(L["Priority"])
+    lists.food = NewList(priority, L["Food"], intro, -12)
+    lists.drink = NewList(priority, L["Drink"], lists.food, -8)
 
-    lists.food = NewList(window, L["Food"], heading, -10)
-    lists.drink = NewList(window, L["Drink"], lists.food, -10)
-
-    local settings = window:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    settings:SetPoint("TOPLEFT", lists.drink, "BOTTOMLEFT", 0, -24)
+    local settings = priority:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    settings:SetPoint("BOTTOMLEFT", priority, "BOTTOMLEFT", LEFT, 78)
     settings:SetText(L["Settings"])
 
     local useMacro =
-        NewSetting(window, "useMacro", L["Keep the BiscuitBreak macro up to date"], settings, -10, ns.Macro.Update)
+        NewSetting(priority, "useMacro", L["Keep the BiscuitBreak macro up to date"], settings, -10, ns.Macro.Update)
     -- Saved the way LibDBIcon reads it: ns.db.minimap.hide.
-    local showButton = NewCheckbox(window, L["Show the minimap button"], useMacro, -8, function()
+    NewCheckbox(priority, L["Show the minimap button"], useMacro, -8, function()
         return not ns.db.minimap.hide
     end, function(value)
         ns.db.minimap.hide = not value
     end, ns.Minimap.Sync)
-    local showBar = NewSetting(window, "showBar", L["Show the eating bar"], showButton, -8, ns.SyncBar)
-
-    local barButton = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
-    barButton:SetSize(160, 24)
-    barButton:SetPoint("TOPLEFT", showBar, "BOTTOMLEFT", 0, -14)
-    barButton:SetText(L["Eating bar settings"])
-    barButton:SetScript("OnClick", ToggleBarPanel)
+    BuildBarPanel(pages[2])
+    SelectPage(1)
 
     window:SetScript("OnShow", function(self)
         self:RegisterEvent("GET_ITEM_INFO_RECEIVED")
         -- Bags may have changed while the window was closed.
         ns.Scan.Run(true)
-        Options.Refresh()
     end)
     window:SetScript("OnHide", function(self)
         self:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
-        -- The bar's settings are opened from here, so they close with it.
-        if barPanel then barPanel:Hide() end
     end)
     window:SetScript("OnEvent", Options.Refresh)
 end

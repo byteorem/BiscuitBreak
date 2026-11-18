@@ -33,7 +33,7 @@ end
 -- food: the ns.Food table.
 -- Returns the food item ID or nil, the drink item ID or nil, and a list of
 -- every carried food and drink with its values.
-function Scan.Rank(carried, level, maxHealth, maxMana, hasMana, food)
+function Scan.Rank(carried, level, maxHealth, maxMana, hasMana, food, excluded)
     local found = {}
     local bestFood, bestDrink
     for i = 1, #carried do
@@ -45,12 +45,13 @@ function Scan.Rank(carried, level, maxHealth, maxMana, hasMana, food)
                 count = count,
                 level = entry.level,
                 usable = entry.level <= level,
+                excluded = excluded and excluded[id] or false,
                 health = (entry.hp or 0) + (entry.hpPct or 0) / 100 * maxHealth,
                 mana = (entry.mp or 0) + (entry.mpPct or 0) / 100 * maxMana,
                 percent = (entry.hpPct or entry.mpPct) and true or false,
             }
             found[#found + 1] = item
-            if item.usable then
+            if item.usable and not item.excluded then
                 if item.health > 0 and Beats(item, bestFood, "health") then bestFood = item end
                 if hasMana and item.mana > 0 and Beats(item, bestDrink, "mana") then bestDrink = item end
             end
@@ -74,6 +75,7 @@ function Scan.Order(found, key)
         if found[i][key] > 0 then list[#list + 1] = found[i] end
     end
     table.sort(list, function(a, b)
+        if a.excluded ~= b.excluded then return not a.excluded end
         if a.usable ~= b.usable then return a.usable end
         return Beats(a, b, key)
     end)
@@ -162,7 +164,7 @@ function Scan.Run(force)
     if not force and signature == lastSignature then return end
     lastSignature = signature
 
-    local food, drink, found = Scan.Rank(items, level, maxHealth, maxMana, hasMana, ns.Food)
+    local food, drink, found = Scan.Rank(items, level, maxHealth, maxMana, hasMana, ns.Food, ns.db.excludedItems)
     Scan.picks.food, Scan.picks.drink = food, drink
     Scan.found = found
     Scan.hasMana = hasMana
