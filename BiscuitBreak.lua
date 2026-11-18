@@ -10,7 +10,24 @@ local DEFAULTS = {
     barScale = 1,
     barWidth = 220,
     barHeight = 16,
+    -- Names from UI/Media.lua. "Default" is the game's own font.
+    barTexture = "Solid",
+    barFont = "Default",
+    barFontSize = 10,
+    -- Font flags: "", "OUTLINE" or "THICKOUTLINE".
+    barFontOutline = "",
+    barIcon = true,
+    -- Colours are { red, green, blue }, each from 0 to 1.
+    barColor = { 1.0, 0.62, 0.0 },
+    fullColor = { 0.2, 0.78, 0.3 },
 }
+
+local function IsColor(value)
+    return type(value) == "table"
+        and type(value[1]) == "number"
+        and type(value[2]) == "number"
+        and type(value[3]) == "number"
+end
 
 -- Seconds after entering the world at which the game's macros are taken as
 -- loaded, if UPDATE_MACROS has not said so first.
@@ -25,7 +42,13 @@ local frame = CreateFrame("Frame")
 local function LoadSettings()
     if type(BiscuitBreakDB) ~= "table" then BiscuitBreakDB = {} end
     for key, value in pairs(DEFAULTS) do
-        if type(BiscuitBreakDB[key]) ~= type(value) then BiscuitBreakDB[key] = value end
+        local saved = BiscuitBreakDB[key]
+        if type(value) == "table" then
+            -- A copy, so changing the saved colour leaves the default alone.
+            if not IsColor(saved) then BiscuitBreakDB[key] = { value[1], value[2], value[3] } end
+        elseif type(saved) ~= type(value) then
+            BiscuitBreakDB[key] = value
+        end
     end
     ns.db = BiscuitBreakDB
     if type(ns.db.excludedItems) ~= "table" then ns.db.excludedItems = {} end

@@ -7,15 +7,24 @@ ns.Options = Options
 
 local L = ns.L
 local QUESTION_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local WINDOW_WIDTH, WINDOW_HEIGHT = 490, 540
+local WINDOW_WIDTH, WINDOW_HEIGHT = 490, 650
 local LEFT = 20
 local CONTENT_WIDTH = WINDOW_WIDTH - 2 * LEFT
 local LABEL_HEIGHT, ROW_HEIGHT, ROW_GAP, MAX_ROWS = 30, 20, 2, 5
+-- Where a bar setting's control starts, right of its label.
+local CONTROL_X, CONTROL_WIDTH = 90, 220
+-- A dropdown with more choices than this scrolls.
+local MENU_ROWS, MENU_ROW_HEIGHT = 15, 20
+local OUTLINES = {
+    { "None", "" },
+    { "Outline", "OUTLINE" },
+    { "Thick outline", "THICKOUTLINE" },
+}
 
 local window
 local lists = {}
 local checkboxes = {}
-local resizeQueued = false
+local applyQueued = false
 
 -- One line of a priority list: its place, an icon, the item with its count,
 -- and on the right what it restores.
@@ -117,9 +126,24 @@ local function NewSetting(parent, key, text, anchor, offsetY, apply)
     end, apply)
 end
 
-local function Resize()
-    resizeQueued = false
-    ns.Bar.ApplySize()
+local function Apply()
+    applyQueued = false
+    ns.Bar.Apply()
+end
+
+-- Redraws the bar on the next frame: once, however many changes ask for it.
+local function QueueApply()
+    if applyQueued then return end
+    applyQueued = true
+    C_Timer.After(0, Apply)
+end
+
+-- The name of a bar setting, at the left of its row.
+local function NewLabel(parent, text, anchor, offsetY)
+    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, offsetY)
+    label:SetText(text)
+    return label
 end
 
 local function FormatPixels(value)
@@ -134,13 +158,11 @@ end
 -- Like a checkbox, it applies on the next frame: once, however many changes a
 -- drag sends.
 local function NewSlider(parent, key, text, anchor, offsetY, min, max, step, format)
-    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    label:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, offsetY)
-    label:SetText(text)
+    local label = NewLabel(parent, text, anchor, offsetY)
 
     local slider = CreateFrame("Slider", nil, parent, "MinimalSliderWithSteppersTemplate")
-    slider:SetSize(220, 20)
-    slider:SetPoint("LEFT", label, "LEFT", 90, 0)
+    slider:SetSize(CONTROL_WIDTH, 20)
+    slider:SetPoint("LEFT", label, "LEFT", CONTROL_X, 0)
     local right = MinimalSliderWithSteppersMixin.Label.Right
     local steps = math.floor((max - min) / step + 0.5)
     slider:Init(ns.db[key], min, max, steps, { [right] = CreateMinimalSliderFormatter(right, format) })
@@ -149,12 +171,97 @@ local function NewSlider(parent, key, text, anchor, offsetY, min, max, step, for
         local rounded = math.floor(value / step + 0.5) * step
         if rounded == ns.db[key] then return end
         ns.db[key] = rounded
-        if not resizeQueued then
-            resizeQueued = true
-            C_Timer.After(0, Resize)
+        QueueApply()
+    end)
+    return label
+end
+
+-- A dropdown for one saved choice of the bar. choices returns the list as
+-- { { text, value }, ... } and is asked each time the menu opens, so it can
+-- offer what other addons have added since.
+local function NewDropdown(parent, key, text, anchor, offsetY, choices)
+    local label = NewLabel(parent, text, anchor, offsetY)
+
+    local dropdown = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
+    dropdown:SetWidth(CONTROL_WIDTH)
+    dropdown:SetPoint("LEFT", label, "LEFT", CONTROL_X, 0)
+    local function IsChosen(value)
+        return ns.db[key] == value
+    end
+    local function Choose(value)
+        ns.db[key] = value
+        QueueApply()
+    end
+    dropdown:SetupMenu(function(_, root)
+        local list = choices()
+        if #list > MENU_ROWS then root:SetScrollMode(MENU_ROWS * MENU_ROW_HEIGHT) end
+        for _, choice in ipairs(list) do
+            root:CreateRadio(choice[1], IsChosen, Choose, choice[2])
         end
     end)
     return label
+end
+
+-- A square of one saved colour of the bar, with its name beside it. A click
+-- opens the game's colour picker; cancelling the picker puts the colour back.
+local function NewSwatch(parent, key, text, anchor, offsetX)
+    local swatch = CreateFrame("Button", nil, parent)
+    swatch:SetSize(18, 18)
+    swatch:SetPoint("LEFT", anchor, "LEFT", offsetX, 0)
+    local edge = swatch:CreateTexture(nil, "BACKGROUND")
+    edge:SetAllPoints()
+    edge:SetColorTexture(0, 0, 0)
+    local color = swatch:CreateTexture(nil, "ARTWORK")
+    color:SetPoint("TOPLEFT", 1, -1)
+    color:SetPoint("BOTTOMRIGHT", -1, 1)
+    local name = swatch:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    name:SetPoint("LEFT", swatch, "RIGHT", 6, 0)
+    name:SetText(text)
+    swatch:SetHitRectInsets(0, -(6 + name:GetStringWidth()), 0, 0)
+
+    local function Set(r, g, b)
+        ns.db[key] = { r, g, b }
+        color:SetColorTexture(r, g, b)
+        QueueApply()
+    end
+    swatch:SetScript("OnClick", function()
+        local r, g, b = ns.db[key][1], ns.db[key][2], ns.db[key][3]
+        ColorPickerFrame:SetupColorPickerAndShow({
+            r = r,
+            g = g,
+            b = b,
+            hasOpacity = false,
+            swatchFunc = function() Set(ColorPickerFrame:GetColorRGB()) end,
+            cancelFunc = function() Set(r, g, b) end,
+        })
+    end)
+    color:SetColorTexture(ns.db[key][1], ns.db[key][2], ns.db[key][3])
+    return swatch
+end
+
+local function TextureChoices()
+    local list = {}
+    for _, name in ipairs(ns.Media.List("statusbar")) do
+        list[#list + 1] = { name, name }
+    end
+    return list
+end
+
+-- The game's own font comes first, under a name of its own.
+local function FontChoices()
+    local list = { { L["Default"], "Default" } }
+    for _, name in ipairs(ns.Media.List("font")) do
+        list[#list + 1] = { name, name }
+    end
+    return list
+end
+
+local function OutlineChoices()
+    local list = {}
+    for i, outline in ipairs(OUTLINES) do
+        list[i] = { L[outline[1]], outline[2] }
+    end
+    return list
 end
 
 local function Shade(row, shade)
@@ -285,9 +392,17 @@ local function BuildBarPanel(barPanel)
     local scale = NewSlider(barPanel, "barScale", L["Scale"], show, -20, 0.5, 2, 0.05, FormatPercent)
     local width = NewSlider(barPanel, "barWidth", L["Width"], scale, -22, 100, 400, 10, FormatPixels)
     local height = NewSlider(barPanel, "barHeight", L["Height"], width, -22, 10, 40, 1, FormatPixels)
+    local texture = NewDropdown(barPanel, "barTexture", L["Texture"], height, -22, TextureChoices)
+    local font = NewDropdown(barPanel, "barFont", L["Font"], texture, -22, FontChoices)
+    local fontSize = NewSlider(barPanel, "barFontSize", L["Font size"], font, -22, 8, 20, 1, FormatPixels)
+    local outline = NewDropdown(barPanel, "barFontOutline", L["Outline"], fontSize, -22, OutlineChoices)
+    local colors = NewLabel(barPanel, L["Colors"], outline, -22)
+    NewSwatch(barPanel, "barColor", L["Bar"], colors, CONTROL_X)
+    NewSwatch(barPanel, "fullColor", L["Full"], colors, CONTROL_X + CONTROL_WIDTH / 2)
+    local icon = NewSetting(barPanel, "barIcon", L["Show the icon"], colors, -14, ns.Bar.Apply)
 
     local hint = barPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    hint:SetPoint("TOPLEFT", height, "BOTTOMLEFT", 0, -14)
+    hint:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -10)
     hint:SetWidth(CONTENT_WIDTH)
     hint:SetJustifyH("LEFT")
     hint:SetText(L["Red tracks health and blue tracks mana. Each tick marks the expected refill time or effect end."]

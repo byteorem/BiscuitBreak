@@ -1,5 +1,8 @@
 -- One meal timer with health and mana ticks. The client positions each tick
 -- and reveals the full-resource overlay without exposing current HP or mana.
+-- The bar is drawn flat: a plain fill inside a dark edge, under a soft shade.
+-- Every still piece is sized and placed on whole screen pixels, so its edges
+-- stay sharp at any scale, and the client moves the fill itself.
 
 local _, ns = ...
 
@@ -8,25 +11,28 @@ ns.Bar = Bar
 
 local L = ns.L
 
--- The client's cast bar art.
-local ART = {
-    fill = "ui-castingbar-filling-standard",
-    full = "ui-castingbar-filling-channel",
-    back = "ui-castingbar-background",
-    frame = "ui-castingbar-frame",
-    spark = "ui-castingbar-pip",
-}
--- How far the cast bar's frame art reaches below the timer.
-local FRAME_REACH = 2
--- The plain look, for a client without that art.
-local TEXTURE = "Interface\\TargetingFrame\\UI-StatusBar"
+local FLAT = "Interface\\Buttons\\WHITE8X8"
 local DEFAULT_POINT = { "CENTER", "CENTER", 0, -180 }
 local MANA = Enum.PowerType.Mana
 
-local TIMER_COLOR = { 1.0, 0.7, 0.0 }
-local FULL_COLOR = { 0.15, 0.75, 0.2 }
-local HEALTH_COLOR = { 0.8, 0.15, 0.15 }
-local MANA_COLOR = { 0.2, 0.45, 1.0 }
+-- The saved font name that means the game's own font.
+local STOCK_FONT = "Default"
+local HEALTH_COLOR = { 1.0, 0.2, 0.2 }
+local MANA_COLOR = { 0.25, 0.6, 1.0 }
+local BACK_COLOR = { 0.14, 0.14, 0.14 }
+local EDGE_COLOR = { 0.03, 0.03, 0.03 }
+-- How dark the shade gets at the bottom of the bar.
+local SHADE = 0.35
+local SPARK_ALPHA = 0.7
+
+-- Sizes before they are rounded to whole screen pixels.
+local EDGE = 1
+local TICK_WIDTH = 2
+local SPARK_WIDTH = 1
+local ICON_GAP = 3
+
+-- A duration this long stands still: the sample bar.
+local FROZEN = 1e6
 
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
 -- Space kept clear around the preview inside its box.
@@ -34,8 +40,8 @@ local PREVIEW_PAD = 12
 
 local main -- the bar on screen, built on first use
 local preview -- the copy in the bar settings, if they have been opened
-local step
-local hasArt -- the client has every piece of ART; nil until the first bar is built
+local step -- 1 at a full resource, else 0
+local short -- 0 at a full resource, else 1
 local current -- the meal being shown, or nil
 local unlocked = false
 local tracking = { health = false, mana = false }
@@ -48,6 +54,15 @@ local function CanDrawResources()
         and UnitPowerPercent ~= nil
 end
 
+-- True when the client can move a fill through time by itself.
+local function CanTimeFill(statusBar)
+    return C_DurationUtil ~= nil
+        and C_DurationUtil.CreateDuration ~= nil
+        and statusBar.SetTimerDuration ~= nil
+        and Enum.StatusBarTimerDirection ~= nil
+        and Enum.StatusBarInterpolation ~= nil
+end
+
 -- Created once and reused.
 local function Curves()
     if step then return end
@@ -55,6 +70,10 @@ local function Curves()
     if Enum.LuaCurveType then step:SetType(Enum.LuaCurveType.Step) end
     step:AddPoint(0, 0)
     step:AddPoint(1, 1)
+    short = C_CurveUtil.CreateCurve()
+    if Enum.LuaCurveType then short:SetType(Enum.LuaCurveType.Step) end
+    short:AddPoint(0, 1)
+    short:AddPoint(1, 0)
 end
 
 -- A hidden maximum counts as having mana.
@@ -64,47 +83,56 @@ local function UsesMana()
     return max ~= nil and max > 0
 end
 
-local function HasArt()
-    if not (C_Texture and C_Texture.GetAtlasInfo) then return false end
-    for _, name in pairs(ART) do
-        if not C_Texture.GetAtlasInfo(name) then return false end
-    end
-    return true
+-- The size of one screen pixel in a frame's own units.
+local function Pixel(frame)
+    local _, screenHeight = GetPhysicalScreenSize()
+    local scale = frame:GetEffectiveScale()
+    if not screenHeight or screenHeight <= 0 or scale <= 0 then return 1 end
+    return 768 / screenHeight / scale
 end
 
--- Sized later, by Size.
-local function NewStatusBar(parent, color)
-    local bar = CreateFrame("StatusBar", nil, parent)
-    bar:SetStatusBarTexture(TEXTURE)
-    if hasArt then
-        -- Greyed, so the colour below tints it.
-        local fill = bar:GetStatusBarTexture()
-        fill:SetAtlas(ART.fill)
-        fill:SetDesaturated(true)
-    end
-    bar:SetStatusBarColor(color[1], color[2], color[3])
-    bar:SetMinMaxValues(0, 1)
-    bar:SetValue(0)
-    bar.back = bar:CreateTexture(nil, "BACKGROUND")
-    bar.back:SetAllPoints()
-    bar.back:SetColorTexture(0, 0, 0, 0.6)
-    return bar
+-- A length rounded to whole pixels, and never to none.
+local function Snap(length, pixel)
+    return math.max(1, math.floor(length / pixel + 0.5)) * pixel
 end
 
--- The gap between the icon and the timer: wider past the frame art.
-local function IconGap()
-    return hasArt and 2 + FRAME_REACH or 2
+-- Moves a placed frame the fraction of a pixel that puts its corner on one.
+-- It stays anchored to anchor, so it follows it.
+local function AlignToPixels(frame, anchor)
+    local left, bottom = frame:GetLeft(), frame:GetBottom()
+    local anchorLeft, anchorBottom = anchor:GetLeft(), anchor:GetBottom()
+    if not (left and bottom and anchorLeft and anchorBottom) then return end
+    local pixel = Pixel(frame)
+    -- The anchor's corner in the frame's units.
+    local ratio = anchor:GetEffectiveScale() / frame:GetEffectiveScale()
+    left = math.floor(left / pixel + 0.5) * pixel - anchorLeft * ratio
+    bottom = math.floor(bottom / pixel + 0.5) * pixel - anchorBottom * ratio
+    frame:ClearAllPoints()
+    frame:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", left, bottom)
 end
 
+-- Lets a moving piece glide between pixels instead of stepping across them.
+local function Glide(texture)
+    texture:SetSnapToPixelGrid(false)
+    texture:SetTexelSnappingBias(0)
+end
+
+local function Paint(texture, color, alpha)
+    texture:SetColorTexture(color[1], color[2], color[3], alpha or 1)
+end
+
+-- A clear status bar whose fill ends where the tick belongs. anchor: the
+-- side of the tick that sits on that spot, so the health tick (RIGHT) and
+-- the mana tick (LEFT) lie side by side when both mark the same moment.
+-- Placed later, by Size.
 local function NewMarker(timer, level, color, anchor)
     local track = CreateFrame("StatusBar", nil, timer)
-    track:SetAllPoints(timer)
     track:SetFrameLevel(level)
-    track:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
+    track:SetStatusBarTexture(FLAT)
     track:SetStatusBarColor(0, 0, 0, 0)
     track:SetMinMaxValues(0, 1)
-    track.tick = track:CreateTexture(nil, "OVERLAY")
-    track.tick:SetColorTexture(color[1], color[2], color[3], 1)
+    track.tick = track:CreateTexture(nil, "OVERLAY", nil, 7)
+    Paint(track.tick, color)
     track.tick:SetPoint(anchor, track:GetStatusBarTexture(), "RIGHT")
     return track
 end
@@ -113,93 +141,165 @@ end
 -- game, so the same build serves the bar itself and the preview in its
 -- settings. name: the frame's global name, or nil.
 local function NewBar(parent, name)
-    if hasArt == nil then hasArt = HasArt() end
-
     local bar = {}
     local frame = CreateFrame("Frame", name, parent)
     bar.frame = frame
 
-    local timer = NewStatusBar(frame, TIMER_COLOR)
-    timer:SetPoint("TOPLEFT")
-    bar.timer = timer
+    -- The dark edge is the frame itself, showing around the timer set into it.
+    local edge = frame:CreateTexture(nil, "BACKGROUND")
+    edge:SetAllPoints()
+    Paint(edge, EDGE_COLOR)
 
+    -- Look gives the timer its texture and colour.
+    local timer = CreateFrame("StatusBar", nil, frame)
+    timer:SetMinMaxValues(0, 1)
+    timer:SetValue(0)
+    timer.back = timer:CreateTexture(nil, "BACKGROUND")
+    timer.back:SetAllPoints()
+    Paint(timer.back, BACK_COLOR)
+    bar.timer = timer
+    if CanTimeFill(timer) then bar.duration = C_DurationUtil.CreateDuration() end
+
+    -- A bright line on the fill's leading edge. Drawn by the timer, so the
+    -- green layer covers it once you are full.
+    bar.spark = timer:CreateTexture(nil, "OVERLAY")
+    Paint(bar.spark, { 1, 1, 1 }, SPARK_ALPHA)
+    Glide(bar.spark)
+
+    -- The icon sits left of the bar inside the same dark edge.
+    bar.iconEdge = frame:CreateTexture(nil, "BACKGROUND")
+    Paint(bar.iconEdge, EDGE_COLOR)
     bar.icon = frame:CreateTexture(nil, "ARTWORK")
-    bar.icon:SetPoint("RIGHT", timer, "LEFT", -IconGap(), 0)
-    bar.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    bar.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- The green layer: health gate > mana gate > green texture over the timer.
     bar.gateHealth = CreateFrame("Frame", nil, timer)
     bar.gateHealth:SetAllPoints(timer)
     bar.gateMana = CreateFrame("Frame", nil, bar.gateHealth)
     bar.gateMana:SetAllPoints(timer)
-    local green = bar.gateMana:CreateTexture(nil, "ARTWORK")
-    green:SetAllPoints()
+    bar.green = bar.gateMana:CreateTexture(nil, "ARTWORK")
+    bar.green:SetAllPoints()
+
+    -- Above the green layer: the shade, then the ticks, then the text.
+    local level = bar.gateMana:GetFrameLevel()
+    local art = CreateFrame("Frame", nil, timer)
+    art:SetAllPoints(timer)
+    art:SetFrameLevel(level + 1)
+    -- Clear at the top and darker towards the bottom, over fill and
+    -- background alike, so the flat colours get some depth.
+    local shade = art:CreateTexture(nil, "ARTWORK")
+    shade:SetAllPoints()
+    shade:SetColorTexture(1, 1, 1, 1)
+    shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, SHADE), CreateColor(0, 0, 0, 0))
 
     -- Transparent status bars let the client position ticks from secret values.
-    bar.healthMark = NewMarker(timer, bar.gateMana:GetFrameLevel() + 1, HEALTH_COLOR, "BOTTOM")
-    bar.manaMark = NewMarker(timer, bar.gateMana:GetFrameLevel() + 1, MANA_COLOR, "TOP")
+    bar.healthMark = NewMarker(timer, level + 2, HEALTH_COLOR, "RIGHT")
+    bar.manaMark = NewMarker(timer, level + 2, MANA_COLOR, "LEFT")
 
-    -- Frame art and text sit above the ticks.
     local overlay = CreateFrame("Frame", nil, timer)
     overlay:SetAllPoints(timer)
-    overlay:SetFrameLevel(bar.healthMark:GetFrameLevel() + 1)
-
-    if hasArt then
-        -- The timer as the game's cast bar: its gold fill untinted, its
-        -- background, a spark on the fill's edge and its frame over the lot.
-        local fill = timer:GetStatusBarTexture()
-        fill:SetDesaturated(false)
-        timer:SetStatusBarColor(1, 1, 1)
-        timer.back:SetAtlas(ART.back)
-        timer.back:ClearAllPoints()
-        timer.back:SetPoint("TOPLEFT", -1, 1)
-        timer.back:SetPoint("BOTTOMRIGHT", 1, -1)
-        green:SetAtlas(ART.full)
-        -- Drawn by the timer, so the green layer covers it once you are full.
-        bar.spark = timer:CreateTexture(nil, "OVERLAY")
-        bar.spark:SetAtlas(ART.spark)
-        bar.spark:SetPoint("CENTER", fill, "RIGHT", 0, -1)
-        local border = overlay:CreateTexture(nil, "BORDER")
-        border:SetAtlas(ART.frame)
-        border:SetPoint("TOPLEFT", timer, "TOPLEFT", -FRAME_REACH, 0)
-        border:SetPoint("BOTTOMRIGHT", timer, "BOTTOMRIGHT", FRAME_REACH, -FRAME_REACH)
-    else
-        green:SetTexture(TEXTURE)
-        green:SetVertexColor(FULL_COLOR[1], FULL_COLOR[2], FULL_COLOR[3])
-    end
+    overlay:SetFrameLevel(level + 3)
 
     -- A font string needs its font at creation: SetText without one is an
-    -- error on this client. The frame art's top rim covers the timer's top
-    -- edge, so text sits a pixel lower to stay centred on what shows.
-    local textY = hasArt and -1 or 0
+    -- error on this client.
     bar.nameText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.nameText:SetPoint("LEFT", 4, textY)
+    bar.nameText:SetPoint("LEFT", 4, 0)
     bar.nameText:SetJustifyH("LEFT")
     bar.timeText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.timeText:SetPoint("RIGHT", -4, textY)
+    bar.timeText:SetPoint("RIGHT", -4, 0)
     bar.nameText:SetPoint("RIGHT", bar.timeText, "LEFT", -4, 0)
     bar.nameText:SetWordWrap(false)
 
     return bar
 end
 
--- Sizes a bar's pieces from the saved width and height.
-local function Size(bar)
-    local width, height = ns.db.barWidth, ns.db.barHeight
-    bar.frame:SetSize(width, height)
-    bar.timer:SetSize(width, height)
-    bar.healthMark.tick:SetSize(3, height / 2 + 2)
-    bar.manaMark.tick:SetSize(3, height / 2 + 2)
-    bar.icon:SetSize(height, height)
-    if bar.spark then bar.spark:SetSize(5, height + 4) end
+-- Gives a bar its saved texture, colours, font and icon.
+local function Look(bar)
+    local db = ns.db
+    local timer = bar.timer
+    local texture = ns.Media.Fetch("statusbar", db.barTexture) or FLAT
+    timer:SetStatusBarTexture(texture)
+    timer:SetStatusBarColor(db.barColor[1], db.barColor[2], db.barColor[3])
+    -- Setting the texture can hand the timer a new fill, so what hangs off
+    -- the fill is put back on it.
+    local fill = timer:GetStatusBarTexture()
+    Glide(fill)
+    bar.spark:ClearAllPoints()
+    bar.spark:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+    bar.spark:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+    bar.green:SetTexture(texture)
+    bar.green:SetVertexColor(db.fullColor[1], db.fullColor[2], db.fullColor[3])
+
+    local stock = GameFontHighlightSmall:GetFont()
+    local font = db.barFont ~= STOCK_FONT and ns.Media.Fetch("font", db.barFont) or stock
+    for _, text in ipairs({ bar.nameText, bar.timeText }) do
+        -- A font file that will not load leaves the text on the game's font.
+        if text:SetFont(font, db.barFontSize, db.barFontOutline) == false then
+            text:SetFont(stock, db.barFontSize, db.barFontOutline)
+        end
+    end
+
+    bar.icon:SetShown(db.barIcon)
+    bar.iconEdge:SetShown(db.barIcon)
+end
+
+-- Scales a bar and sizes its pieces from the saved width and height, each
+-- rounded to whole screen pixels at that scale.
+local function Size(bar, scale)
+    local frame, timer = bar.frame, bar.timer
+    frame:SetScale(scale)
+    local pixel = Pixel(frame)
+    local width, height = Snap(ns.db.barWidth, pixel), Snap(ns.db.barHeight, pixel)
+    local edge = Snap(EDGE, pixel)
+    frame:SetSize(width, height)
+    timer:ClearAllPoints()
+    timer:SetPoint("TOPLEFT", edge, -edge)
+    timer:SetPoint("BOTTOMRIGHT", -edge, edge)
+    bar.spark:SetWidth(Snap(SPARK_WIDTH, pixel))
+
+    bar.iconEdge:ClearAllPoints()
+    bar.iconEdge:SetPoint("TOPRIGHT", frame, "TOPLEFT", -Snap(ICON_GAP, pixel), 0)
+    bar.iconEdge:SetSize(height, height)
+    bar.icon:ClearAllPoints()
+    bar.icon:SetPoint("TOPLEFT", bar.iconEdge, "TOPLEFT", edge, -edge)
+    bar.icon:SetPoint("BOTTOMRIGHT", bar.iconEdge, "BOTTOMRIGHT", -edge, edge)
+
+    -- The tracks stop a tick short of each end of the timer, so a tick at
+    -- either end stays inside the edge.
+    local tickWidth = Snap(TICK_WIDTH, pixel)
+    for _, track in ipairs({ bar.healthMark, bar.manaMark }) do
+        track:ClearAllPoints()
+        track:SetPoint("TOPLEFT", timer, "TOPLEFT", tickWidth, 0)
+        track:SetPoint("BOTTOMRIGHT", timer, "BOTTOMRIGHT", -tickWidth, 0)
+        track.tick:SetSize(tickWidth, height - 2 * edge)
+    end
+end
+
+-- Runs a bar's fill from start for span seconds. The client moves it when
+-- it can; otherwise OnUpdate does.
+local function RunFill(bar, start, span)
+    if bar.duration then
+        bar.duration:SetTimeFromStart(start, span)
+        bar.timer:SetTimerDuration(bar.duration, Enum.StatusBarInterpolation.Immediate,
+            Enum.StatusBarTimerDirection.ElapsedTime)
+    else
+        bar.timer:SetMinMaxValues(0, span)
+        bar.timer:SetValue(GetTime() - start)
+    end
+end
+
+-- Stands a bar's fill still at a fraction of the way along.
+local function HoldFill(bar, fraction)
+    RunFill(bar, GetTime() - fraction * FROZEN, FROZEN)
 end
 
 -- A made-up meal part of the way through, with neither resource full.
 local function ShowSample(bar, name, time)
     bar.healthMark:Show()
     bar.manaMark:Show()
-    bar.timer:SetMinMaxValues(0, 1)
-    bar.timer:SetValue(0.35)
+    bar.healthMark.tick:SetAlpha(1)
+    bar.manaMark.tick:SetAlpha(1)
+    HoldFill(bar, 0.35)
     bar.healthMark:SetValue(0.65)
     bar.manaMark:SetValue(0.85)
     bar.gateHealth:SetAlpha(0)
@@ -212,18 +312,20 @@ end
 -- Sits the preview in the middle of its box at the bar's own scale, or
 -- smaller when the bar would not fit.
 local function FitPreview()
-    Size(preview)
     local frame, box = preview.frame, preview.box
+    local width, height = ns.db.barWidth, ns.db.barHeight
     -- The icon hangs off the left of the frame.
-    local iconSpace = ns.db.barHeight + IconGap()
+    local iconSpace = ns.db.barIcon and height + ICON_GAP or 0
     local scale = math.min(
         ns.db.barScale,
-        (box:GetWidth() - 2 * PREVIEW_PAD) / (frame:GetWidth() + iconSpace),
-        (box:GetHeight() - 2 * PREVIEW_PAD) / frame:GetHeight()
+        (box:GetWidth() - 2 * PREVIEW_PAD) / (width + iconSpace),
+        (box:GetHeight() - 2 * PREVIEW_PAD) / height
     )
-    frame:SetScale(scale)
+    Look(preview)
+    Size(preview, scale)
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", box, "CENTER", iconSpace / 2, 0)
+    AlignToPixels(frame, box)
 end
 
 -- Builds the preview inside box, a frame of a set size: a copy of the bar
@@ -231,8 +333,8 @@ end
 function Bar.NewPreview(box)
     preview = NewBar(box)
     preview.box = box
-    ShowSample(preview, L["Preview"], "12.0")
     FitPreview()
+    ShowSample(preview, L["Preview"], "12.0")
 end
 
 -- The position is saved in screen units, not the bar's own, so the bar stays
@@ -250,13 +352,14 @@ local function ApplyPosition()
     local scale = frame:GetScale()
     frame:ClearAllPoints()
     frame:SetPoint(saved[1], UIParent, saved[2] or saved[1], (saved[3] or 0) / scale, (saved[4] or 0) / scale)
+    AlignToPixels(frame, UIParent)
 end
 
--- Applies the saved scale, width and height to the bar and to the preview.
-function Bar.ApplySize()
+-- Applies the saved look and sizes to the bar and to the preview.
+function Bar.Apply()
     if main then
-        main.frame:SetScale(ns.db.barScale)
-        Size(main)
+        Look(main)
+        Size(main, ns.db.barScale)
         ApplyPosition()
     end
     if preview then FitPreview() end
@@ -283,10 +386,13 @@ local function UpdateMarker(track, maximum, flatRate, percentRate, finish, isMan
     if threshold > 0 and threshold < 1 then curve:AddPoint(threshold, cap) end
     curve:AddPoint(1, now)
 
+    -- A full resource has no refill time left to mark, so its tick goes.
     if isMana then
         track:SetValue(UnitPowerPercent("player", MANA, false, curve))
+        track.tick:SetAlpha(UnitPowerPercent("player", MANA, false, short))
     else
         track:SetValue(UnitHealthPercent("player", false, curve))
+        track.tick:SetAlpha(UnitHealthPercent("player", false, short))
     end
     track:Show()
 end
@@ -314,7 +420,7 @@ end
 local function OnUpdate()
     if not current then return end
     local now = GetTime()
-    main.timer:SetValue(now - current.start)
+    if not main.duration then main.timer:SetValue(now - current.start) end
     local left = current.finish - now
     if left < 0 then left = 0 end
     main.timeText:SetFormattedText("%.1f", left)
@@ -339,6 +445,7 @@ local function Build()
     frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         SavePosition()
+        ApplyPosition()
     end)
     frame:EnableMouse(false)
 
@@ -355,7 +462,7 @@ local function Build()
     end)
 
     if CanDrawResources() then Curves() end
-    Bar.ApplySize()
+    Bar.Apply()
 end
 
 local function ShowMeal(meal)
@@ -368,7 +475,7 @@ local function ShowMeal(meal)
         -- No curve functions: countdown only, never green.
         main.gateHealth:SetAlpha(0)
     end
-    main.timer:SetMinMaxValues(0, math.max(meal.finish - meal.start, 0.1))
+    RunFill(main, meal.start, math.max(meal.finish - meal.start, 0.1))
     main.icon:SetTexture(meal.icon)
     main.nameText:SetText(meal.text or "")
     OnUpdate()
@@ -405,6 +512,8 @@ end
 -- the settings windows and can be dragged.
 function Bar.SetUnlocked(on)
     unlocked = on and true or false
+    -- The settings window may have moved since the preview was last placed.
+    if unlocked and preview then FitPreview() end
     if not main then
         if not unlocked then return end
         Build()

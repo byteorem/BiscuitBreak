@@ -6,6 +6,7 @@
 ## Version: 0.0.1
 ## IconTexture: Interface\AddOns\BiscuitBreak\Media\Icon.tga
 ## SavedVariables: BiscuitBreakDB
+## OptionalDeps: LibSharedMedia-3.0
 
 Libs\LibStub.lua
 Libs\CallbackHandler-1.0.lua
@@ -17,6 +18,7 @@ Data\Food.lua
 Core\Scan.lua
 Core\Macro.lua
 Core\Meal.lua
+UI\Media.lua
 UI\Bar.lua
 UI\Minimap.lua
 UI\Options.lua
