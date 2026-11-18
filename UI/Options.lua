@@ -405,7 +405,7 @@ local function BuildBarPanel(barPanel)
     hint:SetPoint("TOPLEFT", icon, "BOTTOMLEFT", 0, -10)
     hint:SetWidth(CONTENT_WIDTH)
     hint:SetJustifyH("LEFT")
-    hint:SetText(L["Red tracks health and blue tracks mana. Each tick marks the expected refill time or effect end."]
+    hint:SetText(L["Red is health and blue is mana. Each tick slides up the bar and reaches the end when you are full."]
         .. "\n" .. L["Drag the bar on your screen to move it."])
 
     local reset = CreateFrame("Button", nil, barPanel, "UIPanelButtonTemplate")

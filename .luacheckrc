@@ -58,6 +58,8 @@ read_globals = {
     "NUM_BAG_SLOTS",
     "NUM_TOTAL_EQUIPPED_BAG_SLOTS",
     "Settings",
+    "GetHealthRegen",
+    "GetManaRegen",
     "UnitHealthMax",
     "UnitLevel",
     "UnitPowerMax",

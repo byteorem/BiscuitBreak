@@ -34,6 +34,9 @@ local ICON_GAP = 3
 -- A duration this long stands still: the sample bar.
 local FROZEN = 1e6
 
+-- How a tick moves to a new place, where the client can ease it.
+local GLIDE = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.ExponentialEaseOut
+
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
 -- Space kept clear around the preview inside its box.
 local PREVIEW_PAD = 12
@@ -134,7 +137,14 @@ local function NewMarker(timer, level, color, anchor)
     track.tick = track:CreateTexture(nil, "OVERLAY", nil, 7)
     Paint(track.tick, color)
     track.tick:SetPoint(anchor, track:GetStatusBarTexture(), "RIGHT")
+    track.fresh = true
     return track
+end
+
+-- Makes the next update put the track's tick straight in its place, with no
+-- glide from wherever it was left.
+local function Forget(track)
+    track.fresh = true
 end
 
 -- The widgets of one bar. Nothing here places it on screen or watches the
@@ -302,6 +312,9 @@ local function ShowSample(bar, name, time)
     HoldFill(bar, 0.35)
     bar.healthMark:SetValue(0.65)
     bar.manaMark:SetValue(0.85)
+    -- The sample has moved the ticks off the places a meal gave them.
+    Forget(bar.healthMark)
+    Forget(bar.manaMark)
     bar.gateHealth:SetAlpha(0)
     bar.gateMana:SetAlpha(0)
     bar.icon:SetTexture(SAMPLE_ICON)
@@ -365,33 +378,71 @@ function Bar.Apply()
     if preview then FitPreview() end
 end
 
--- Map resource percent to the estimated time it will fill, capped at the
--- end of its own aura. Only the client evaluates the curve at player percent.
-local function UpdateMarker(track, maximum, flatRate, percentRate, finish, isMana)
+-- The game's own figure for what you regain each second, or nil when the
+-- client hides it.
+local function Regen(isMana)
+    local regen
+    if isMana then
+        regen = GetManaRegen and GetManaRegen()
+    else
+        regen = GetHealthRegen and GetHealthRegen()
+    end
+    if regen == nil or (issecretvalue and issecretvalue(regen)) then return nil end
+    return regen
+end
+
+-- What you regain each second during the meal. The game's figure counts your
+-- own regeneration together with the flat gain of the food or drink (seen on
+-- 1.60.1: 68.7 a second on a 49.8 drink), so it replaces the flat part when
+-- it is the larger. The listed rate alone is too low. A percent gain is a
+-- separate effect and is added on top.
+local function Rate(rates, maximum, isMana)
+    local flat = (isMana and rates.mp or rates.hp) or 0
+    local percent = maximum * ((isMana and rates.mpPct or rates.hpPct) or 0) / 100
+    return math.max(flat, Regen(isMana) or 0) + percent
+end
+
+-- Puts a tick as far from the end of the bar as the resource is from full,
+-- in the bar's own seconds: it slides up the bar as you fill and gets to the
+-- end the moment you are full. So a tick ahead of the timer's fill means full
+-- before the meal ends, and one behind it means the meal ends first.
+-- The place depends only on how full you are, never on the clock, so the
+-- tick moves only when the resource does and only ever towards the end. A
+-- wrong rate stretches or shrinks the distance left; it cannot turn the tick
+-- round, and the error is gone by the time the tick arrives.
+-- Health and mana are hidden from addon code, so the place is a curve from
+-- your share of the resource to a share of the bar, built from numbers addon
+-- code may read; the client evaluates it and the status bar takes the answer.
+local function UpdateMarker(track, maximum, rates, isMana)
     if (issecretvalue and issecretvalue(maximum)) or not maximum or maximum <= 0 then
         track:Hide()
+        Forget(track)
         return
     end
-    local rate = (flatRate or 0) + maximum * (percentRate or 0) / 100
-    local span = current.finish - current.start
-    local remaining = math.max(0, finish - GetTime())
-    local cap = (finish - current.start) / span
-    local now = cap - remaining / span
-    local fromEmpty = maximum / rate
+    -- The share of the bar it takes to fill the resource from empty.
+    local fromEmpty = maximum / Rate(rates, maximum, isMana) / (current.finish - current.start)
     if not track.curve then track.curve = C_CurveUtil.CreateCurve() end
     local curve = track.curve
     curve:ClearPoints()
-    curve:AddPoint(0, math.min(cap, now + fromEmpty / span))
-    local threshold = 1 - remaining / fromEmpty
-    if threshold > 0 and threshold < 1 then curve:AddPoint(threshold, cap) end
-    curve:AddPoint(1, now)
+    if fromEmpty > 1 then
+        -- Further from full than the bar is long: the tick waits at the start.
+        curve:AddPoint(0, 0)
+        curve:AddPoint(1 - 1 / fromEmpty, 0)
+    else
+        curve:AddPoint(0, 1 - fromEmpty)
+    end
+    curve:AddPoint(1, 1)
 
-    -- A full resource has no refill time left to mark, so its tick goes.
+    -- A tick that was not showing goes straight to its place; after that it
+    -- glides, so health that comes in steps does not make it jump.
+    local glide = not track.fresh and GLIDE or nil
+    track.fresh = false
     if isMana then
-        track:SetValue(UnitPowerPercent("player", MANA, false, curve))
+        track:SetValue(UnitPowerPercent("player", MANA, false, curve), glide)
+        -- A full resource has nothing left to wait for, so its tick goes.
         track.tick:SetAlpha(UnitPowerPercent("player", MANA, false, short))
     else
-        track:SetValue(UnitHealthPercent("player", false, curve))
+        track:SetValue(UnitHealthPercent("player", false, curve), glide)
         track.tick:SetAlpha(UnitHealthPercent("player", false, short))
     end
     track:Show()
@@ -401,16 +452,14 @@ local function UpdateResources()
     if unlocked and not current then return end
     if not step or not current then return end
     if tracking.health then
-        UpdateMarker(main.healthMark, UnitHealthMax("player"), current.health.hp, current.health.hpPct,
-            current.healthEnd, false)
+        UpdateMarker(main.healthMark, UnitHealthMax("player"), current.health, false)
         main.gateHealth:SetAlpha(UnitHealthPercent("player", false, step))
     else
         -- Not being restored: it must not hold the green layer back.
         main.gateHealth:SetAlpha(1)
     end
     if tracking.mana then
-        UpdateMarker(main.manaMark, UnitPowerMax("player", MANA), current.mana.mp, current.mana.mpPct,
-            current.manaEnd, true)
+        UpdateMarker(main.manaMark, UnitPowerMax("player", MANA), current.mana, true)
         main.gateMana:SetAlpha(UnitPowerPercent("player", MANA, false, step))
     else
         main.gateMana:SetAlpha(1)
@@ -469,8 +518,14 @@ local function ShowMeal(meal)
     local resources = step ~= nil
     tracking.health = resources and meal.health
     tracking.mana = resources and meal.mana and UsesMana()
-    if not tracking.health then main.healthMark:Hide() end
-    if not tracking.mana then main.manaMark:Hide() end
+    if not tracking.health then
+        main.healthMark:Hide()
+        Forget(main.healthMark)
+    end
+    if not tracking.mana then
+        main.manaMark:Hide()
+        Forget(main.manaMark)
+    end
     if not resources then
         -- No curve functions: countdown only, never green.
         main.gateHealth:SetAlpha(0)
@@ -505,7 +560,11 @@ end
 
 function Bar.End()
     current = nil
-    if main then Render() end
+    if main then
+        Forget(main.healthMark)
+        Forget(main.manaMark)
+        Render()
+    end
 end
 
 -- Unlocked: the bar shows (with a sample when you are not eating), sits above
