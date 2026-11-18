@@ -1,4 +1,4 @@
--- Minimap: the minimap button. A click opens the settings page. LibDBIcon
+-- Minimap: the minimap button. A click opens the settings window. LibDBIcon
 -- draws and drags it, and saves its place in ns.db.minimap.
 
 local addonName, ns = ...
@@ -26,7 +26,7 @@ function Minimap.Sync()
             text = addonName,
             icon = ICON,
             OnClick = function()
-                ns.Options.Open()
+                ns.Options.Toggle()
             end,
             OnTooltipShow = function(tooltip)
                 tooltip:SetText(addonName)

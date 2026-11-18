@@ -7,6 +7,9 @@ local addonName, ns = ...
 local DEFAULTS = {
     useMacro = true,
     showBar = true,
+    barScale = 1,
+    barWidth = 220,
+    barHeight = 16,
 }
 
 -- Seconds after entering the world at which the game's macros are taken as
@@ -102,5 +105,5 @@ frame:RegisterEvent("ADDON_LOADED")
 SLASH_BISCUITBREAK1 = "/bb"
 SLASH_BISCUITBREAK2 = "/biscuitbreak"
 SlashCmdList.BISCUITBREAK = function()
-    ns.Options.Open()
+    ns.Options.Toggle()
 end
