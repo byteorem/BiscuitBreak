@@ -92,12 +92,15 @@ function handlers.PLAYER_LEVEL_UP(level)
     ns.Scan.Request()
 end
 
--- Maximum health and mana change the result only for percentage food.
-local function OnMaximumChanged()
+-- Maximum health changes the result only for percentage food.
+function handlers.UNIT_MAXHEALTH()
     if ns.Scan.hasPercent then ns.Scan.Request() end
 end
-handlers.UNIT_MAXHEALTH = OnMaximumChanged
-handlers.UNIT_MAXPOWER = OnMaximumChanged
+
+-- Maximum mana also decides whether a drink is picked at all, so a scan that
+-- read it as zero must run again once it changes. The power type in the event
+-- is not read, in case the game hides it.
+handlers.UNIT_MAXPOWER = ns.Scan.Request
 
 function handlers.PLAYER_ENTERING_WORLD()
     ns.Scan.Request()
