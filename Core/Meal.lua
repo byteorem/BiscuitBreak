@@ -27,7 +27,8 @@ end
 -- Can throw when the game hides effects mid-read.
 local function Read(out)
     out.start, out.finish, out.icon = nil, nil, nil
-    out.health, out.mana = false, false
+    out.health, out.mana = nil, nil
+    out.healthEnd, out.manaEnd = nil, nil
     for i = #out.names, 1, -1 do
         out.names[i] = nil
     end
@@ -36,16 +37,20 @@ local function Read(out)
         local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
         if not aura then break end
         local id = aura.spellId
-        local kind = not Hidden(id) and ns.Auras[id] or nil
+        local rates = not Hidden(id) and ns.Auras[id] or nil
         local finish, duration = aura.expirationTime, aura.duration
-        if kind and not Hidden(finish) and not Hidden(duration) and finish and duration and duration > 0 then
+        if rates and not Hidden(finish) and not Hidden(duration) and finish and duration and duration > 0 then
             local start = finish - duration
             -- The bar runs from the earliest start to the latest end, so a
             -- second food or drink eaten mid-meal extends it.
             if not out.start or start < out.start then out.start = start end
             if not out.finish or finish > out.finish then out.finish = finish end
-            if kind ~= "mp" then out.health = true end
-            if kind ~= "hp" then out.mana = true end
+            if (rates.hp or rates.hpPct) and (not out.healthEnd or finish > out.healthEnd) then
+                out.health, out.healthEnd = rates, finish
+            end
+            if (rates.mp or rates.mpPct) and (not out.manaEnd or finish > out.manaEnd) then
+                out.mana, out.manaEnd = rates, finish
+            end
             if not Hidden(aura.icon) then out.icon = out.icon or aura.icon end
 
             local name = aura.name

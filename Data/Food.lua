@@ -299,67 +299,67 @@ ns.Food = {
     [287974] = { hp = 2148, level = 1 }, -- Grilled Squid
 }
 
--- effect (aura) spell ID = what it restores while it is on you.
+-- Aura spell ID = health and mana restored per second, flat or percent of maximum.
 ns.Auras = {
-    [430] = "mp", -- Drink
-    [431] = "mp", -- Drink
-    [432] = "mp", -- Drink
-    [433] = "hp", -- Food
-    [434] = "hp", -- Food
-    [435] = "hp", -- Food
-    [833] = "mp", -- Green Tea
-    [1127] = "hp", -- Food
-    [1129] = "hp", -- Food
-    [1131] = "hp", -- Food
-    [1133] = "mp", -- Drink
-    [1135] = "mp", -- Drink
-    [1137] = "mp", -- Drink
-    [2639] = "both", -- Food
-    [5004] = "hp", -- Food
-    [5006] = "hp", -- Food
-    [6410] = "hp", -- Food
-    [7737] = "hp", -- Food
-    [10256] = "hp", -- Food
-    [18124] = "hp", -- Blessed Sunfruit
-    [18140] = "mp", -- Blessed Sunfruit Juice
-    [21149] = "hp", -- Egg Nog
-    [22734] = "mp", -- Drink
-    [23698] = "mp", -- Alterac Spring Water
-    [24005] = "hp", -- Food
-    [24355] = "mp", -- Drink
-    [24707] = "both", -- Food
-    [24869] = "hp", -- Food
-    [25660] = "hp", -- Food
-    [25695] = "hp", -- Food
-    [25696] = "mp", -- Drink
-    [25700] = "hp", -- Food
-    [25701] = "mp", -- Brain Food
-    [25886] = "hp", -- Food
-    [25887] = "mp", -- Brain Food
-    [25990] = "both", -- Graccu's Mince Meat Fruitcake
-    [26030] = "hp", -- Windblossom Berries
-    [26260] = "hp", -- Food
-    [26261] = "mp", -- Drink
-    [26263] = "both", -- Dim Sum
-    [26401] = "hp", -- Food
-    [26402] = "mp", -- Drink
-    [26472] = "hp", -- Food
-    [26473] = "mp", -- Drink
-    [26474] = "hp", -- Food
-    [26475] = "mp", -- Drink
-    [29007] = "mp", -- Drink
-    [29008] = "hp", -- Food
-    [29038] = "hp", -- Fizzy Energy Drink
-    [29039] = "mp", -- Fizzy Energy Drink
-    [29055] = "both", -- Refreshing Red Apple
-    [29073] = "hp", -- Food
-    [468767] = "mp", -- Drink
-    [470362] = "hp", -- Food
-    [470369] = "hp", -- Food
-    [1225769] = "hp", -- Food
-    [1225771] = "hp", -- Food
-    [1225772] = "hp", -- Food
-    [1269354] = "both", -- Ketharas' Hyjal Stew
-    [1312719] = "both", -- Restorative Bread
-    [1330734] = "mp", -- Drink
+    [430] = { mp = 8.4 }, -- Drink
+    [431] = { mp = 20.8 }, -- Drink
+    [432] = { mp = 34.8 }, -- Drink
+    [433] = { hp = 3.4 }, -- Food
+    [434] = { hp = 11.6 }, -- Food
+    [435] = { hp = 23 }, -- Food
+    [833] = { mp = 6 }, -- Green Tea
+    [1127] = { hp = 32.4 }, -- Food
+    [1129] = { hp = 46.4 }, -- Food
+    [1131] = { hp = 71.6 }, -- Food
+    [1133] = { mp = 49.8 }, -- Drink
+    [1135] = { mp = 66.4 }, -- Drink
+    [1137] = { mp = 97.8 }, -- Drink
+    [2639] = { hp = 14, mp = 14 }, -- Food
+    [5004] = { hp = 3.4 }, -- Food
+    [5006] = { hp = 23 }, -- Food
+    [6410] = { hp = 14 }, -- Food
+    [7737] = { hp = 2 }, -- Food
+    [10256] = { hp = 46.4 }, -- Food
+    [18124] = { hp = 71.6 }, -- Blessed Sunfruit
+    [18140] = { mp = 147 }, -- Blessed Sunfruit Juice
+    [21149] = { hp = 3.4 }, -- Egg Nog
+    [22734] = { mp = 140 }, -- Drink
+    [23698] = { mp = 147 }, -- Alterac Spring Water
+    [24005] = { hpPct = 2 }, -- Food
+    [24355] = { mpPct = 2 }, -- Drink
+    [24707] = { hpPct = 3, mpPct = 3 }, -- Food
+    [24869] = { hpPct = 2 }, -- Food
+    [25660] = { hp = 85 }, -- Food
+    [25695] = { hp = 71.6 }, -- Food
+    [25696] = { mp = 147 }, -- Drink
+    [25700] = { hp = 7.4 }, -- Food
+    [25701] = { mp = 15 }, -- Brain Food
+    [25886] = { hp = 27 }, -- Food
+    [25887] = { mp = 42 }, -- Brain Food
+    [25990] = { hpPct = 5, mpPct = 5 }, -- Graccu's Mince Meat Fruitcake
+    [26030] = { hp = 71.6 }, -- Windblossom Berries
+    [26260] = { hp = 147 }, -- Food
+    [26261] = { mp = 147 }, -- Drink
+    [26263] = { hpPct = 4, mpPct = 3 }, -- Dim Sum
+    [26401] = { hp = 85 }, -- Food
+    [26402] = { mp = 147 }, -- Drink
+    [26472] = { hp = 35.8 }, -- Food
+    [26473] = { mp = 73.4 }, -- Drink
+    [26474] = { hp = 53.6 }, -- Food
+    [26475] = { mp = 110.2 }, -- Drink
+    [29007] = { mp = 97.8 }, -- Drink
+    [29008] = { hp = 71.6 }, -- Food
+    [29038] = { hp = 40 }, -- Fizzy Energy Drink
+    [29039] = { mp = 60 }, -- Fizzy Energy Drink
+    [29055] = { hpPct = 4, mpPct = 3 }, -- Refreshing Red Apple
+    [29073] = { hp = 106 }, -- Food
+    [468767] = { mp = 170 }, -- Drink
+    [470362] = { hp = 71.6 }, -- Food
+    [470369] = { hp = 46.4 }, -- Food
+    [1225769] = { hp = 85 }, -- Food
+    [1225771] = { hp = 85 }, -- Food
+    [1225772] = { hp = 85 }, -- Food
+    [1269354] = { hp = 147, mp = 147 }, -- Ketharas' Hyjal Stew
+    [1312719] = { mpPct = 5, hpPct = 5 }, -- Restorative Bread
+    [1330734] = { mp = 97.8 }, -- Drink
 }

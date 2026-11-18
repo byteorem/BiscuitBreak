@@ -1,12 +1,12 @@
 # BiscuitBreak
 
-One macro that eats and drinks with the strongest food in your bags, and a bar that turns green when you are full.
+Use your strongest food and drink with one macro. The recovery bar turns green when the resources they restore are full.
 
-The addon creates a macro named `BiscuitBreak` on the General tab of `/macro`. Drag it to an action bar. `/bb` or the minimap button opens the settings.
+Open the General tab of `/macro` and drag `_BB_Meal` to an action bar. BiscuitBreak overwrites any existing General macro with that name. `/bb` or the minimap button opens the settings.
 
 - Picks again when your bags or your level change
-- Skips food above your level
-- Shows a countdown while you eat, with your health and mana under it
+- Skips items above your level
+- Marks estimated health and mana refill times on one countdown
 
 The macro updates after combat, because the game blocks macro edits during a fight.
 

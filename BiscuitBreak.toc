@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## AllowLoadGameType: camelot
 ## Title: BiscuitBreak
-## Notes: One macro that eats and drinks with the strongest food in your bags, and a bar that turns green when you are full.
+## Notes: Use your strongest food and drink with one macro. The recovery bar turns green when the resources they restore are full.
 ## Author: byteorem
 ## Version: 0.0.1
 ## IconTexture: Interface\AddOns\BiscuitBreak\Media\Icon.tga

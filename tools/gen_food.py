@@ -239,12 +239,13 @@ def render(build: str, food: dict[int, dict], auras: dict[int, set[str]], data: 
     lines += [
         "}",
         "",
-        "-- effect (aura) spell ID = what it restores while it is on you.",
+        "-- Aura spell ID = health and mana restored per second, flat or percent of maximum.",
         "ns.Auras = {",
     ]
-    for spell, kinds in sorted(auras.items()):
-        kind = "both" if len(kinds) == 2 else next(iter(kinds))
-        lines.append(f'    [{spell}] = "{kind}", -- {data.spell_names.get(spell, "?")}')
+    for spell in sorted(auras):
+        rates = data.regen(spell)
+        fields = [f"{key} = {total / data.duration[spell]:.9g}" for key, total in rates.items()]
+        lines.append(f"    [{spell}] = {{ {', '.join(fields)} }}, -- {data.spell_names.get(spell, '?')}")
     lines += ["}", ""]
     return "\n".join(lines)
 

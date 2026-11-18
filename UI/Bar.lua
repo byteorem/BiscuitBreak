@@ -1,18 +1,5 @@
--- Bar: the eating bar. A countdown of the food or drink, your health and mana
--- under it, and a green layer when you are full.
---
--- Addon code cannot read current health or mana on this client: they are
--- hidden values that must never be compared, tested or used in arithmetic.
--- The game does accept them in some widget calls, so everything here hands
--- them straight to a widget:
---   * UnitHealthPercent / UnitPowerPercent run a curve inside the game and
---     return the (still hidden) result;
---   * a linear curve result goes to StatusBar:SetValue to fill a bar;
---   * a step curve result (0 below 100%, 1 at 100%) goes to Frame:SetAlpha.
--- The green layer sits inside two nested frames, one per resource. The game
--- multiplies their alphas, so green shows only when both are 1.
--- The cost: the addon never learns the moment you are full, so there is no
--- sound and no "seconds until full".
+-- One meal timer with health and mana ticks. The client positions each tick
+-- and reveals the full-resource overlay without exposing current HP or mana.
 
 local _, ns = ...
 
@@ -21,10 +8,7 @@ ns.Bar = Bar
 
 local L = ns.L
 
--- The bar's width, the timer's height and the scale are saved settings.
-local RESOURCE_HEIGHT, GAP = 5, 1
--- The client's own cast bar art. The timer wears all of it; health and mana
--- take the fill greyed and tinted.
+-- The client's cast bar art.
 local ART = {
     fill = "ui-castingbar-filling-standard",
     full = "ui-castingbar-filling-channel",
@@ -50,9 +34,8 @@ local PREVIEW_PAD = 12
 
 local main -- the bar on screen, built on first use
 local preview -- the copy in the bar settings, if they have been opened
-local linear, step
+local step
 local hasArt -- the client has every piece of ART; nil until the first bar is built
-local timerGap = GAP -- space under the timer: wider when it wears a frame
 local current -- the meal being shown, or nil
 local unlocked = false
 local tracking = { health = false, mana = false }
@@ -67,10 +50,7 @@ end
 
 -- Created once and reused.
 local function Curves()
-    if linear then return end
-    linear = C_CurveUtil.CreateCurve()
-    linear:AddPoint(0, 0)
-    linear:AddPoint(1, 1)
+    if step then return end
     step = C_CurveUtil.CreateCurve()
     if Enum.LuaCurveType then step:SetType(Enum.LuaCurveType.Step) end
     step:AddPoint(0, 0)
@@ -116,14 +96,24 @@ local function IconGap()
     return hasArt and 2 + FRAME_REACH or 2
 end
 
+local function NewMarker(timer, level, color, anchor)
+    local track = CreateFrame("StatusBar", nil, timer)
+    track:SetAllPoints(timer)
+    track:SetFrameLevel(level)
+    track:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
+    track:SetStatusBarColor(0, 0, 0, 0)
+    track:SetMinMaxValues(0, 1)
+    track.tick = track:CreateTexture(nil, "OVERLAY")
+    track.tick:SetColorTexture(color[1], color[2], color[3], 1)
+    track.tick:SetPoint(anchor, track:GetStatusBarTexture(), "RIGHT")
+    return track
+end
+
 -- The widgets of one bar. Nothing here places it on screen or watches the
 -- game, so the same build serves the bar itself and the preview in its
 -- settings. name: the frame's global name, or nil.
 local function NewBar(parent, name)
-    if hasArt == nil then
-        hasArt = HasArt()
-        if hasArt then timerGap = GAP + FRAME_REACH end
-    end
+    if hasArt == nil then hasArt = HasArt() end
 
     local bar = {}
     local frame = CreateFrame("Frame", name, parent)
@@ -137,11 +127,6 @@ local function NewBar(parent, name)
     bar.icon:SetPoint("RIGHT", timer, "LEFT", -IconGap(), 0)
     bar.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
 
-    bar.healthBar = NewStatusBar(frame, HEALTH_COLOR)
-    bar.healthBar:SetPoint("TOPLEFT", timer, "BOTTOMLEFT", 0, -timerGap)
-    bar.manaBar = NewStatusBar(frame, MANA_COLOR)
-    bar.manaBar:SetPoint("TOPLEFT", bar.healthBar, "BOTTOMLEFT", 0, -GAP)
-
     -- The green layer: health gate > mana gate > green texture over the timer.
     bar.gateHealth = CreateFrame("Frame", nil, timer)
     bar.gateHealth:SetAllPoints(timer)
@@ -150,10 +135,14 @@ local function NewBar(parent, name)
     local green = bar.gateMana:CreateTexture(nil, "ARTWORK")
     green:SetAllPoints()
 
-    -- Frame art and text sit above the green layer.
+    -- Transparent status bars let the client position ticks from secret values.
+    bar.healthMark = NewMarker(timer, bar.gateMana:GetFrameLevel() + 1, HEALTH_COLOR, "BOTTOM")
+    bar.manaMark = NewMarker(timer, bar.gateMana:GetFrameLevel() + 1, MANA_COLOR, "TOP")
+
+    -- Frame art and text sit above the ticks.
     local overlay = CreateFrame("Frame", nil, timer)
     overlay:SetAllPoints(timer)
-    overlay:SetFrameLevel(bar.gateMana:GetFrameLevel() + 1)
+    overlay:SetFrameLevel(bar.healthMark:GetFrameLevel() + 1)
 
     if hasArt then
         -- The timer as the game's cast bar: its gold fill untinted, its
@@ -197,33 +186,22 @@ end
 -- Sizes a bar's pieces from the saved width and height.
 local function Size(bar)
     local width, height = ns.db.barWidth, ns.db.barHeight
-    bar.frame:SetSize(width, height + timerGap + 2 * RESOURCE_HEIGHT + GAP)
+    bar.frame:SetSize(width, height)
     bar.timer:SetSize(width, height)
-    bar.healthBar:SetSize(width, RESOURCE_HEIGHT)
-    bar.manaBar:SetSize(width, RESOURCE_HEIGHT)
+    bar.healthMark.tick:SetSize(3, height / 2 + 2)
+    bar.manaMark.tick:SetSize(3, height / 2 + 2)
     bar.icon:SetSize(height, height)
     if bar.spark then bar.spark:SetSize(5, height + 4) end
 end
 
--- Lays out the resource bars for what is being restored.
-local function Layout(bar, showHealth, showMana)
-    bar.healthBar:SetShown(showHealth)
-    bar.manaBar:SetShown(showMana)
-    bar.manaBar:ClearAllPoints()
-    if showHealth then
-        bar.manaBar:SetPoint("TOPLEFT", bar.healthBar, "BOTTOMLEFT", 0, -GAP)
-    else
-        bar.manaBar:SetPoint("TOPLEFT", bar.timer, "BOTTOMLEFT", 0, -timerGap)
-    end
-end
-
 -- A made-up meal part of the way through, with neither resource full.
 local function ShowSample(bar, name, time)
-    Layout(bar, true, true)
+    bar.healthMark:Show()
+    bar.manaMark:Show()
     bar.timer:SetMinMaxValues(0, 1)
-    bar.timer:SetValue(0.6)
-    bar.healthBar:SetValue(0.7)
-    bar.manaBar:SetValue(0.4)
+    bar.timer:SetValue(0.35)
+    bar.healthMark:SetValue(0.65)
+    bar.manaMark:SetValue(0.85)
     bar.gateHealth:SetAlpha(0)
     bar.gateMana:SetAlpha(0)
     bar.icon:SetTexture(SAMPLE_ICON)
@@ -284,20 +262,49 @@ function Bar.ApplySize()
     if preview then FitPreview() end
 end
 
--- Repaints the health and mana bars and the green layer from the game's
--- hidden values. Nothing here reads what it passes on.
+-- Map resource percent to the estimated time it will fill, capped at the
+-- end of its own aura. Only the client evaluates the curve at player percent.
+local function UpdateMarker(track, maximum, flatRate, percentRate, finish, isMana)
+    if (issecretvalue and issecretvalue(maximum)) or not maximum or maximum <= 0 then
+        track:Hide()
+        return
+    end
+    local rate = (flatRate or 0) + maximum * (percentRate or 0) / 100
+    local span = current.finish - current.start
+    local remaining = math.max(0, finish - GetTime())
+    local cap = (finish - current.start) / span
+    local now = cap - remaining / span
+    local fromEmpty = maximum / rate
+    if not track.curve then track.curve = C_CurveUtil.CreateCurve() end
+    local curve = track.curve
+    curve:ClearPoints()
+    curve:AddPoint(0, math.min(cap, now + fromEmpty / span))
+    local threshold = 1 - remaining / fromEmpty
+    if threshold > 0 and threshold < 1 then curve:AddPoint(threshold, cap) end
+    curve:AddPoint(1, now)
+
+    if isMana then
+        track:SetValue(UnitPowerPercent("player", MANA, false, curve))
+    else
+        track:SetValue(UnitHealthPercent("player", false, curve))
+    end
+    track:Show()
+end
+
 local function UpdateResources()
     if unlocked and not current then return end
-    if not linear then return end
+    if not step or not current then return end
     if tracking.health then
-        main.healthBar:SetValue(UnitHealthPercent("player", false, linear))
+        UpdateMarker(main.healthMark, UnitHealthMax("player"), current.health.hp, current.health.hpPct,
+            current.healthEnd, false)
         main.gateHealth:SetAlpha(UnitHealthPercent("player", false, step))
     else
         -- Not being restored: it must not hold the green layer back.
         main.gateHealth:SetAlpha(1)
     end
     if tracking.mana then
-        main.manaBar:SetValue(UnitPowerPercent("player", MANA, false, linear))
+        UpdateMarker(main.manaMark, UnitPowerMax("player", MANA), current.mana.mp, current.mana.mpPct,
+            current.manaEnd, true)
         main.gateMana:SetAlpha(UnitPowerPercent("player", MANA, false, step))
     else
         main.gateMana:SetAlpha(1)
@@ -352,10 +359,11 @@ local function Build()
 end
 
 local function ShowMeal(meal)
-    local resources = linear ~= nil
+    local resources = step ~= nil
     tracking.health = resources and meal.health
     tracking.mana = resources and meal.mana and UsesMana()
-    Layout(main, tracking.health, tracking.mana)
+    if not tracking.health then main.healthMark:Hide() end
+    if not tracking.mana then main.manaMark:Hide() end
     if not resources then
         -- No curve functions: countdown only, never green.
         main.gateHealth:SetAlpha(0)
