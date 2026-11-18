@@ -5,6 +5,10 @@
 ## Author: byteorem
 ## Version: 0.0.1
 ## IconTexture: Interface\AddOns\BiscuitBreak\Media\Icon.tga
+## Category: Quality of Life
+## AddonCompartmentFunc: BiscuitBreak_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: BiscuitBreak_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: BiscuitBreak_OnAddonCompartmentLeave
 ## SavedVariables: BiscuitBreakDB
 ## OptionalDeps: LibSharedMedia-3.0
 

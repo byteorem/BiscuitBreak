@@ -10,7 +10,10 @@ local DEFAULTS = {
     barScale = 1,
     barWidth = 220,
     barHeight = 16,
-    -- Names from UI/Media.lua. "Default" is the game's own font.
+    -- "Blizzard" (the game's cast bar art) or "Flat".
+    barStyle = "Blizzard",
+    -- Names from UI/Media.lua. "Default" is the game's own font. The texture
+    -- and the colours are for the Flat style.
     barTexture = "Solid",
     barFont = "Default",
     barFontSize = 10,
@@ -21,6 +24,11 @@ local DEFAULTS = {
     barColor = { 1.0, 0.62, 0.0 },
     fullColor = { 0.2, 0.78, 0.3 },
 }
+ns.DEFAULTS = DEFAULTS
+
+local L = ns.L
+-- The blue of the addon's icon, lightened to read on chat.
+local BRAND = "|cff7aa2e3"
 
 local function IsColor(value)
     return type(value) == "table"
@@ -34,7 +42,7 @@ end
 local MACRO_WAIT = 2
 
 function ns.Print(message)
-    print("|cffffd200BiscuitBreak:|r " .. message)
+    print(BRAND .. addonName .. "|r: " .. message)
 end
 
 local frame = CreateFrame("Frame")
@@ -129,8 +137,46 @@ frame:SetScript("OnEvent", function(_, event, ...)
 end)
 frame:RegisterEvent("ADDON_LOADED")
 
+-- Puts every setting back to its default and redraws everything that shows
+-- one. Asked for by the reset button and /bb reset, after a confirmation.
+function ns.ResetSettings()
+    wipe(BiscuitBreakDB)
+    LoadSettings()
+    ns.Minimap.Sync()
+    ns.SyncBar()
+    ns.Bar.ResetPosition()
+    ns.Bar.Apply()
+    ns.Scan.Run(true)
+    ns.Macro.Update()
+    ns.Options.Sync()
+    ns.Print(L["Settings reset."])
+end
+
+local function Command(text)
+    return "|cffffffff" .. text .. "|r"
+end
+
+local COMMANDS = {
+    [""] = function() ns.Options.Toggle() end,
+    reset = function() StaticPopup_Show("BISCUITBREAK_RESET") end,
+    version = function()
+        ns.Print(string.format(L["Version %s"], C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"))
+    end,
+    help = function()
+        ns.Print(L["Commands:"])
+        print("  " .. Command("/bb") .. " - " .. L["open the settings"])
+        print("  " .. Command("/bb reset") .. " - " .. L["reset every setting"])
+        print("  " .. Command("/bb version") .. " - " .. L["show the version"])
+    end,
+}
+
 SLASH_BISCUITBREAK1 = "/bb"
 SLASH_BISCUITBREAK2 = "/biscuitbreak"
-SlashCmdList.BISCUITBREAK = function()
-    ns.Options.Toggle()
+SlashCmdList.BISCUITBREAK = function(input)
+    local command = COMMANDS[strtrim(input or ""):lower()]
+    if command then
+        command()
+    else
+        ns.Print(string.format(L["Unknown command. Type %s for a list."], Command("/bb help")))
+    end
 end

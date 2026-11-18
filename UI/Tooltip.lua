@@ -53,7 +53,7 @@ local function OnSetAction(tooltip, slot)
     if not items then return end
 
     tooltip:ClearLines()
-    tooltip:AddLine(L["Meal"], 1, 1, 1)
+    tooltip:AddLine("|TInterface\\AddOns\\BiscuitBreak\\Media\\Icon.tga:16|t " .. L["Meal"], 1, 1, 1)
     if #items == 0 then
         tooltip:AddLine(L["No food or drink in your bags"], 0.5, 0.5, 0.5)
     else

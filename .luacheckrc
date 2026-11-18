@@ -8,6 +8,10 @@ globals = {
     "SLASH_BISCUITBREAK1",
     "SLASH_BISCUITBREAK2",
     "SlashCmdList",
+    "StaticPopupDialogs",
+    "BiscuitBreak_OnAddonCompartmentClick",
+    "BiscuitBreak_OnAddonCompartmentEnter",
+    "BiscuitBreak_OnAddonCompartmentLeave",
 }
 
 -- Game API the addon reads.
@@ -65,6 +69,18 @@ read_globals = {
     "UnitPowerMax",
     "issecretvalue",
     "wipe",
+    "CANCEL",
+    "CreateAnchor",
+    "CreateDataProvider",
+    "CreateScrollBoxListLinearView",
+    "GameFontHighlight",
+    "PlaySound",
+    "ScrollBoxConstants",
+    "ScrollUtil",
+    "ShowMacroFrame",
+    "SOUNDKIT",
+    "StaticPopup_Show",
+    "strtrim",
 }
 
 -- Tests run in a stock Lua interpreter, outside the game.

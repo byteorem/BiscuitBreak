@@ -7,9 +7,17 @@ local Minimap = {}
 ns.Minimap = Minimap
 
 local L = ns.L
-local ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
+local ICON = "Interface\\AddOns\\BiscuitBreak\\Media\\Icon.tga"
 
 local launcher
+
+-- The tooltip of the minimap button and of the addon compartment entry.
+local function FillTooltip(tooltip)
+    tooltip:SetText("|T" .. ICON .. ":16|t " .. addonName, 1, 1, 1)
+    tooltip:AddLine(L["Your best food and drink on one button."], nil, nil, nil, true)
+    tooltip:AddLine(" ")
+    tooltip:AddLine(L["Click to open the settings."], 0.1, 1, 0.1)
+end
 
 -- Applies the "Show the minimap button" setting. Called at ADDON_LOADED and
 -- whenever the setting changes.
@@ -29,9 +37,8 @@ function Minimap.Sync()
                 ns.Options.Toggle()
             end,
             OnTooltipShow = function(tooltip)
-                tooltip:SetText(addonName)
-                tooltip:AddLine(L["Click to open the settings."], 1, 1, 1)
-                tooltip:AddLine(L["Drag to move this button."], 1, 1, 1)
+                FillTooltip(tooltip)
+                tooltip:AddLine(L["Drag to move this button."], 0.1, 1, 0.1)
             end,
         })
     end
@@ -44,4 +51,20 @@ function Minimap.Sync()
         -- login, long enough for a button collector to pick one up.
         icons:Register(addonName, launcher, db)
     end
+end
+
+-- The addon compartment, the game's list of addons under the minimap. The
+-- .toc names these.
+function BiscuitBreak_OnAddonCompartmentClick()
+    ns.Options.Toggle()
+end
+
+function BiscuitBreak_OnAddonCompartmentEnter(_, owner)
+    GameTooltip:SetOwner(owner or UIParent, "ANCHOR_LEFT")
+    FillTooltip(GameTooltip)
+    GameTooltip:Show()
+end
+
+function BiscuitBreak_OnAddonCompartmentLeave()
+    GameTooltip:Hide()
 end
