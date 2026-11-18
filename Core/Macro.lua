@@ -15,8 +15,10 @@ ns.Macro = Macro
 local L = ns.L
 
 local NAME = "_BB_Meal"
+Macro.NAME = NAME
 local LEGACY_NAME = "BiscuitBreak"
 -- A fixed icon and no #showtooltip line, so the button always looks the same.
+-- UI/Tooltip.lua fills in the tooltip.
 local ICON = "inv_misc_food_73cinnamonroll"
 local MAX_LENGTH = 255
 
@@ -33,11 +35,28 @@ function Macro.Body(food, drink)
     return table.concat(lines, "\n")
 end
 
+-- The item IDs a macro text uses, in order.
+function Macro.Items(body)
+    local items = {}
+    for id in body:gmatch("item:(%d+)") do
+        items[#items + 1] = tonumber(id)
+    end
+    return items
+end
+
 local function GeneralMacroIndex(name)
     local count = GetNumMacros()
     for index = 1, count do
         if GetMacroInfo(index) == name then return index end
     end
+end
+
+-- The item IDs the macro holds right now, or nil when there is no macro. Read
+-- from the macro and not from Scan's picks, because the two differ while a
+-- write waits for combat to end.
+function Macro.Current()
+    local index = GeneralMacroIndex(NAME)
+    if index then return Macro.Items(select(3, GetMacroInfo(index)) or "") end
 end
 
 local function WarnOnce(key, message)

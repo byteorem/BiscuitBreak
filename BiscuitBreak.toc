@@ -20,4 +20,5 @@ Core\Meal.lua
 UI\Bar.lua
 UI\Minimap.lua
 UI\Options.lua
+UI\Tooltip.lua
 BiscuitBreak.lua

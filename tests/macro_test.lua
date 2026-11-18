@@ -26,6 +26,11 @@ Check("drink only", Body(nil, 3772), "/use item:3772")
 Check("nothing", Body(nil, nil), "")
 Check("one item that is both", Body(3448, 3448), "/use item:3448")
 
+local Items = ns.Macro.Items
+Check("reads both items back", table.concat(Items(Body(1114, 3772)), ","), "1114,3772")
+Check("reads one item back", table.concat(Items(Body(nil, 3772)), ","), "3772")
+Check("reads no items from other text", #Items("/cast Fireball"), 0)
+
 local account = { { name = "BiscuitBreak", body = "/cast Fireball" } }
 local personal = { name = "_BB_Meal", body = "/cast Blink" }
 local combat = false
@@ -57,6 +62,7 @@ account[2].body = "/cast Blizzard"
 ns.Macro.Update()
 Check("overwrites player edits", account[2].body, Body(1114))
 Check("no numbered duplicate", #account, 2)
+Check("reports the macro's items", table.concat(ns.Macro.Current(), ","), "1114")
 
 local legacy = { name = "BiscuitBreak", body = Body(159) }
 account = { legacy, { name = "Other", body = "" } }
