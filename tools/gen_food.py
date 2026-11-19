@@ -182,12 +182,15 @@ def build_food(data: Data):
             continue
         totals: dict[str, float] = defaultdict(float)
         visited: list[int] = []
+        item_auras: list[int] = []
         for use_spell in use_spells:
             for spell in data.walk(use_spell):
                 visited.append(spell)
                 restored = data.regen(spell)
                 for key, value in restored.items():
                     totals[key] += value
+                if restored and spell not in item_auras:
+                    item_auras.append(spell)
                 # Record the aura even when the item is skipped below, so the
                 # bar still shows for food you eat by hand.
                 if "hp" in restored or "hpPct" in restored:
@@ -208,7 +211,7 @@ def build_food(data: Data):
         elif int(sparse["MinFactionID"] or 0) > 0:
             skipped["needs a reputation"].append(label)
         else:
-            entry = {"name": name, "level": int(sparse["RequiredLevel"] or 0)}
+            entry = {"name": name, "level": int(sparse["RequiredLevel"] or 0), "auras": item_auras}
             for key in ("hp", "mp"):
                 if totals.get(key):
                     entry[key] = round(totals[key])
@@ -228,13 +231,15 @@ def render(build: str, food: dict[int, dict], auras: dict[int, set[str]], data: 
         "",
         f'ns.FoodBuild = "{build}"',
         "",
-        "-- item ID = what the item restores over its full duration, and the level it needs.",
+        "-- item ID = what the item restores over its full duration, the level it needs,",
+        "-- and the effects (aura spell IDs) eating it puts on you.",
         "-- hp, mp: flat totals. hpPct, mpPct: percent of your maximum.",
         "ns.Food = {",
     ]
     for item, entry in sorted(food.items()):
         fields = [f"{key} = {entry[key]}" for key in ("hp", "mp", "hpPct", "mpPct") if key in entry]
         fields.append(f"level = {entry['level']}")
+        fields.append(f"auras = {{ {', '.join(str(spell) for spell in entry['auras'])} }}")
         lines.append(f"    [{item}] = {{ {', '.join(fields)} }}, -- {entry['name']}")
     lines += [
         "}",

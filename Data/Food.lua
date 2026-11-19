@@ -5,298 +5,299 @@ local _, ns = ...
 
 ns.FoodBuild = "1.60.1.70959"
 
--- item ID = what the item restores over its full duration, and the level it needs.
+-- item ID = what the item restores over its full duration, the level it needs,
+-- and the effects (aura spell IDs) eating it puts on you.
 -- hp, mp: flat totals. hpPct, mpPct: percent of your maximum.
 ns.Food = {
-    [117] = { hp = 61, level = 1 }, -- Tough Jerky
-    [159] = { mp = 151, level = 1 }, -- Refreshing Spring Water
-    [414] = { hp = 244, level = 5 }, -- Dalaran Sharp
-    [422] = { hp = 552, level = 15 }, -- Dwarven Mild
-    [724] = { hp = 244, level = 5 }, -- Goretusk Liver Pie
-    [733] = { hp = 244, level = 5 }, -- Westfall Stew
-    [787] = { hp = 244, level = 1 }, -- Slitherskin Mackerel
-    [961] = { hp = 61, level = 0 }, -- Healing Herb
-    [1017] = { hp = 552, level = 15 }, -- Seasoned Wolf Kabob
-    [1082] = { hp = 244, level = 5 }, -- Redridge Goulash
-    [1113] = { hp = 244, level = 5 }, -- Conjured Bread
-    [1114] = { hp = 552, level = 15 }, -- Conjured Rye
-    [1119] = { hp = 552, level = 0 }, -- Bottled Spirits
-    [1179] = { mp = 437, level = 5 }, -- Ice Cold Milk
-    [1205] = { mp = 835, level = 15 }, -- Melon Juice
-    [1326] = { hp = 244, level = 0 }, -- Sauteed Sunfish
-    [1401] = { mp = 60, level = 4 }, -- Green Tea Leaf
-    [1487] = { hp = 875, level = 25 }, -- Conjured Pumpernickel
-    [1645] = { mp = 1992, level = 35 }, -- Moonberry Juice
-    [1707] = { hp = 875, level = 25 }, -- Stormwind Brie
-    [1708] = { mp = 1345, level = 25 }, -- Sweet Nectar
-    [2070] = { hp = 61, level = 1 }, -- Darnassian Bleu
-    [2136] = { mp = 835, level = 15 }, -- Conjured Purified Water
-    [2287] = { hp = 244, level = 5 }, -- Haunch of Meat
-    [2288] = { mp = 437, level = 5 }, -- Conjured Fresh Water
-    [2679] = { hp = 61, level = 1 }, -- Charred Wolf Meat
-    [2680] = { hp = 61, level = 1 }, -- Spiced Wolf Meat
-    [2681] = { hp = 61, level = 1 }, -- Roasted Boar Meat
-    [2682] = { hp = 61, level = 1 }, -- Cooked Crab Claw
-    [2683] = { hp = 244, level = 5 }, -- Crab Cake
-    [2684] = { hp = 244, level = 5 }, -- Coyote Steak
-    [2685] = { hp = 552, level = 15 }, -- Succulent Pork Ribs
-    [2687] = { hp = 244, level = 5 }, -- Dry Pork Ribs
-    [2888] = { hp = 61, level = 1 }, -- Beer Basted Boar Ribs
-    [3220] = { hp = 244, level = 5 }, -- Blood Sausage
-    [3448] = { hp = 294, mp = 294, level = 0 }, -- Senggin Root
-    [3662] = { hp = 244, level = 5 }, -- Crocolisk Steak
-    [3663] = { hp = 61, level = 1 }, -- Murloc Fin Soup
-    [3664] = { hp = 552, level = 15 }, -- Crocolisk Gumbo
-    [3665] = { hp = 552, level = 15 }, -- Curiously Tasty Omelet
-    [3666] = { hp = 552, level = 15 }, -- Gooey Spider Cake
-    [3726] = { hp = 244, level = 5 }, -- Big Bear Steak
-    [3727] = { hp = 552, level = 15 }, -- Hot Lion Chops
-    [3728] = { hp = 875, level = 25 }, -- Tasty Lion Steak
-    [3729] = { hp = 552, level = 15 }, -- Soothing Turtle Bisque
-    [3770] = { hp = 552, level = 15 }, -- Mutton Chop
-    [3771] = { hp = 875, level = 25 }, -- Wild Hog Shank
-    [3772] = { mp = 1345, level = 25 }, -- Conjured Spring Water
-    [3927] = { hp = 1392, level = 35 }, -- Fine Aged Cheddar
-    [4457] = { hp = 875, level = 25 }, -- Barbecued Buzzard Wing
-    [4536] = { hp = 61, level = 1 }, -- Shiny Red Apple
-    [4537] = { hp = 244, level = 5 }, -- Tel'Abim Banana
-    [4538] = { hp = 552, level = 15 }, -- Snapvine Watermelon
-    [4539] = { hp = 875, level = 25 }, -- Goldenbark Apple
-    [4540] = { hp = 61, level = 1 }, -- Tough Hunk of Bread
-    [4541] = { hp = 244, level = 5 }, -- Freshly Baked Bread
-    [4542] = { hp = 552, level = 15 }, -- Moist Cornbread
-    [4544] = { hp = 875, level = 25 }, -- Mulgore Spice Bread
-    [4592] = { hp = 552, level = 5 }, -- Longjaw Mud Snapper
-    [4593] = { hp = 552, level = 15 }, -- Bristle Whisker Catfish
-    [4594] = { hp = 875, level = 25 }, -- Rockscale Cod
-    [4599] = { hp = 1392, level = 35 }, -- Cured Ham Steak
-    [4601] = { hp = 1392, level = 35 }, -- Soft Banana Bread
-    [4602] = { hp = 1392, level = 35 }, -- Moon Harvest Pumpkin
-    [4604] = { hp = 61, level = 1 }, -- Forest Mushroom Cap
-    [4605] = { hp = 244, level = 5 }, -- Red-speckled Mushroom
-    [4606] = { hp = 552, level = 15 }, -- Spongy Morel
-    [4607] = { hp = 875, level = 25 }, -- Delicious Cave Mold
-    [4608] = { hp = 1392, level = 35 }, -- Raw Black Truffle
-    [4656] = { hp = 61, level = 1 }, -- Small Pumpkin
-    [4791] = { mp = 1345, level = 25 }, -- Enchanted Water
-    [5057] = { hp = 61, level = 1 }, -- Ripe Watermelon
-    [5066] = { hp = 244, level = 5 }, -- Fissure Plant
-    [5095] = { hp = 61, level = 5 }, -- Rainbow Fin Albacore
-    [5349] = { hp = 61, level = 1 }, -- Conjured Muffin
-    [5350] = { mp = 151, level = 1 }, -- Conjured Water
-    [5472] = { hp = 61, level = 1 }, -- Kaldorei Spider Kabob
-    [5473] = { hp = 294, level = 1 }, -- Scorpid Surprise
-    [5474] = { hp = 61, level = 1 }, -- Roasted Kodo Meat
-    [5476] = { hp = 244, level = 5 }, -- Fillet of Frenzy
-    [5477] = { hp = 61, level = 1 }, -- Strider Stew
-    [5478] = { hp = 552, level = 15 }, -- Dig Rat Stew
-    [5479] = { hp = 244, level = 5 }, -- Crispy Lizard Tail
-    [5480] = { hp = 552, level = 15 }, -- Lean Venison
-    [5525] = { hp = 61, level = 1 }, -- Boiled Clams
-    [5526] = { hp = 244, level = 5 }, -- Clam Chowder
-    [5527] = { hp = 552, level = 15 }, -- Goblin Deviled Clams
-    [5845] = { hp = 552, level = 15 }, -- Flank of Meat
-    [6038] = { hp = 875, level = 25 }, -- Giant Clam Scorcho
-    [6290] = { hp = 61, level = 1 }, -- Brilliant Smallfish
-    [6299] = { hp = 30, level = 1 }, -- Sickly Looking Fish
-    [6316] = { hp = 61, level = 5 }, -- Loch Frenzy Delight
-    [6458] = { hp = 61, level = 5 }, -- Oil Covered Fish
-    [6807] = { hp = 875, level = 0 }, -- Frog Leg Stew
-    [6887] = { hp = 1392, level = 35 }, -- Spotted Yellowtail
-    [6888] = { hp = 61, level = 1 }, -- Herb Baked Egg
-    [6890] = { hp = 61, level = 1 }, -- Smoked Bear Meat
-    [7097] = { hp = 61, level = 1 }, -- Leg Meat
-    [7228] = { hp = 552, level = 15 }, -- Tigule's Strawberry Ice Cream
-    [7806] = { hp = 61, level = 1 }, -- Lollipop
-    [7807] = { hp = 61, level = 1 }, -- Candy Bar
-    [7808] = { hp = 61, level = 1 }, -- Chocolate Square
-    [8075] = { hp = 1392, level = 35 }, -- Conjured Sourdough
-    [8076] = { hp = 2148, level = 45 }, -- Conjured Sweet Roll
-    [8077] = { mp = 1992, level = 35 }, -- Conjured Mineral Water
-    [8078] = { mp = 2934, level = 45 }, -- Conjured Sparkling Water
-    [8079] = { mp = 4200, level = 55 }, -- Conjured Crystal Water
-    [8364] = { hp = 875, level = 25 }, -- Mithril Head Trout
-    [8543] = { hp = 875, level = 25 }, -- Underwater Mushroom Cap
-    [8766] = { mp = 2934, level = 45 }, -- Morning Glory Dew
-    [8932] = { hp = 2148, level = 45 }, -- Alterac Swiss
-    [8948] = { hp = 2148, level = 45 }, -- Dried King Bolete
-    [8950] = { hp = 2148, level = 45 }, -- Homemade Cherry Pie
-    [8952] = { hp = 2148, level = 45 }, -- Roasted Quail
-    [8953] = { hp = 2148, level = 45 }, -- Deep Fried Plantains
-    [8957] = { hp = 1392, level = 45 }, -- Spinefin Halibut
-    [9451] = { mp = 835, level = 15 }, -- Bubbling Water
-    [9681] = { hp = 1392, level = 35 }, -- Grilled King Crawler Legs
-    [10841] = { mp = 1345, level = 25 }, -- Goldthorn Tea
-    [11109] = { hp = 30, level = 1 }, -- Special Chicken Feed
-    [11415] = { hp = 2148, level = 45 }, -- Mixed Berries
-    [11444] = { hp = 2148, level = 45 }, -- Grim Guzzler Boar
-    [11584] = { hp = 61, level = 0 }, -- Cactus Apple Surprise
-    [11950] = { hp = 1933, level = 45 }, -- Windblossom Berries
-    [12209] = { hp = 552, level = 15 }, -- Lean Wolf Steak
-    [12210] = { hp = 552, level = 15 }, -- Roast Raptor
-    [12212] = { hp = 1392, level = 35 }, -- Jungle Stew
-    [12213] = { hp = 244, level = 5 }, -- Carrion Surprise
-    [12214] = { hp = 552, level = 15 }, -- Mystery Stew
-    [12215] = { hp = 875, level = 25 }, -- Heavy Kodo Stew
-    [12216] = { hp = 875, level = 25 }, -- Spiced Chili Crab
-    [12218] = { hp = 1392, level = 35 }, -- Monster Omelet
-    [12224] = { hp = 61, level = 1 }, -- Crispy Bat Wing
-    [12238] = { hp = 244, level = 5 }, -- Darkshore Grouper
-    [12763] = { hp = 2148, level = 45 }, -- Un'Goro Etherfruit
-    [13546] = { hp = 1392, level = 25 }, -- Bloodbelly Fish
-    [13851] = { hp = 875, level = 25 }, -- Hot Wolf Ribs
-    [13927] = { hp = 1392, level = 35 }, -- Cooked Glossy Mightfish
-    [13928] = { hp = 2148, level = 35 }, -- Grilled Squid
-    [13929] = { hp = 2148, level = 35 }, -- Hot Smoked Bass
-    [13930] = { hp = 1392, level = 35 }, -- Filet of Redgill
-    [13931] = { hp = 1392, level = 35 }, -- Nightfin Soup
-    [13932] = { hp = 2148, level = 35 }, -- Poached Sunscale Salmon
-    [13933] = { hp = 2148, level = 45 }, -- Lobster Stew
-    [13934] = { hp = 2148, level = 45 }, -- Mightfish Steak
-    [13935] = { hp = 2148, level = 45 }, -- Baked Salmon
-    [16166] = { hp = 61, level = 1 }, -- Bean Soup
-    [16167] = { hp = 244, level = 5 }, -- Versicolor Treat
-    [16168] = { hp = 1392, level = 35 }, -- Heaven Peach
-    [16169] = { hp = 875, level = 25 }, -- Wild Ricecake
-    [16170] = { hp = 552, level = 15 }, -- Steamed Mandu
-    [16171] = { hp = 2148, level = 45 }, -- Shinsollo
-    [16766] = { hp = 1392, level = 35 }, -- Undermine Clam Chowder
-    [16971] = { hp = 1392, level = 40 }, -- Clamlette Surprise
-    [17119] = { hp = 244, level = 5 }, -- Deeprun Rat Kabob
-    [17197] = { hp = 61, level = 1 }, -- Gingerbread Cookie
-    [17198] = { hp = 61, level = 1 }, -- Egg Nog
-    [17222] = { hp = 1392, level = 35 }, -- Spider Sausage
-    [17344] = { hp = 61, level = 1 }, -- Candy Cane
-    [17404] = { mp = 437, level = 5 }, -- Blended Bean Brew
-    [17405] = { mp = 1345, level = 25 }, -- Green Garden Tea
-    [17406] = { hp = 244, level = 5 }, -- Holiday Cheesewheel
-    [17407] = { hp = 875, level = 25 }, -- Graccu's Homemade Meat Pie
-    [17408] = { hp = 1392, level = 35 }, -- Spicy Beefstick
-    [18045] = { hp = 1392, level = 35 }, -- Tender Wolf Steak
-    [18254] = { hp = 1392, level = 35 }, -- Runn Tum Tuber Surprise
-    [18255] = { hp = 1392, level = 45 }, -- Runn Tum Tuber
-    [18300] = { mp = 4200, level = 55 }, -- Hyjal Nectar
-    [18632] = { hp = 875, level = 25 }, -- Moonbrook Riot Taffy
-    [18633] = { hp = 244, level = 5 }, -- Styleen's Sour Suckerpop
-    [18635] = { hp = 1392, level = 35 }, -- Bellara's Nutterbar
-    [19223] = { hp = 61, level = 1 }, -- Darkmoon Dog
-    [19224] = { hp = 875, level = 25 }, -- Red Hot Wings
-    [19225] = { hp = 2148, level = 45 }, -- Deep Fried Candybar
-    [19299] = { mp = 835, level = 15 }, -- Fizzy Faire Drink
-    [19300] = { mp = 1992, level = 35 }, -- Bottled Winterspring Water
-    [19301] = { hp = 4410, mp = 4410, level = 51 }, -- Alterac Manna Biscuit
-    [19304] = { hp = 244, level = 5 }, -- Spiced Beef Jerky
-    [19305] = { hp = 552, level = 15 }, -- Pickled Kodo Foot
-    [19306] = { hp = 1392, level = 35 }, -- Crunchy Frog
-    [19318] = { mp = 4410, level = 55 }, -- Bottled Alterac Spring Water
-    [19696] = { hpPct = 50, level = 0 }, -- Harvest Bread
-    [19994] = { hpPct = 50, level = 0 }, -- Harvest Fruit
-    [19995] = { hpPct = 50, level = 0 }, -- Harvest Boar
-    [19996] = { hpPct = 50, level = 0 }, -- Harvest Fish
-    [19997] = { mpPct = 60, level = 0 }, -- Harvest Nectar
-    [20031] = { hp = 2550, mp = 4410, level = 55 }, -- Essence Mango
-    [20074] = { hp = 875, level = 25 }, -- Heavy Crocolisk Stew
-    [20388] = { hpPct = 75, mpPct = 75, level = 0 }, -- Lollipop
-    [20389] = { hpPct = 75, mpPct = 75, level = 0 }, -- Candy Corn
-    [20390] = { hpPct = 75, mpPct = 75, level = 0 }, -- Candy Bar
-    [20452] = { hp = 2148, level = 45 }, -- Smoked Desert Dumplings
-    [20516] = { hpPct = 48, level = 0 }, -- Bobbing Apple
-    [21023] = { hp = 2550, level = 45 }, -- Dirge's Kickin' Chimaerok Chops
-    [21030] = { hp = 1392, level = 35 }, -- Darnassus Kimchi Pie
-    [21031] = { hp = 2148, level = 45 }, -- Cabbage Kimchi
-    [21033] = { hp = 2148, level = 45 }, -- Radish Kimchi
-    [21072] = { hp = 244, level = 10 }, -- Smoked Sagefish
-    [21215] = { hpPct = 100, mpPct = 100, level = 40 }, -- Graccu's Mince Meat Fruitcake
-    [21217] = { hp = 552, level = 30 }, -- Sagefish Delight
-    [21235] = { hpPct = 50, level = 0 }, -- Winter Veil Roast
-    [21241] = { mpPct = 60, level = 0 }, -- Winter Veil Eggnog
-    [21254] = { hpPct = 48, level = 0 }, -- Winter Veil Cookie
-    [21537] = { hpPct = 100, mpPct = 75, level = 0 }, -- Festival Dumplings
-    [21552] = { hp = 1392, level = 35 }, -- Striped Yellowtail
-    [22324] = { hp = 2148, level = 45 }, -- Winter Kimchi
-    [22895] = { hp = 3180, level = 55 }, -- Conjured Cinnamon Roll
-    [23160] = { hp = 2148, level = 45 }, -- Friendship Bread
-    [23161] = { mp = 2934, level = 45 }, -- Freshly-Squeezed Lemonade
-    [23172] = { hpPct = 100, mpPct = 75, level = 0 }, -- Refreshing Red Apple
-    [23176] = { hp = 840, mp = 1260, level = 0 }, -- Fizzy Energy Drink
-    [206177] = { hp = 61, level = 1 }, -- Pine Nut Butter
-    [231778] = { mp = 5100, level = 55 }, -- Mountain Spring Water
-    [232436] = { hp = 2148, level = 45 }, -- Darkclaw Bisque
-    [232438] = { hp = 1392, level = 35 }, -- Smoked Redgill
-    [238637] = { hp = 2550, level = 55 }, -- Prowler Steak
-    [238638] = { hp = 2550, level = 55 }, -- Filet o' Flank
-    [238639] = { hp = 2550, level = 55 }, -- Sunrise Omelette
-    [240945] = { hp = 61, level = 1 }, -- Slice of Carrie's Apple Pie
-    [248613] = { hp = 552, level = 15 }, -- Lightning in a Bottle
-    [249796] = { hp = 1392, level = 45 }, -- Hyjal Berries
-    [249865] = { mp = 151, level = 1 }, -- Peace Tea
-    [249866] = { mp = 437, level = 5 }, -- Royal Tea
-    [249867] = { mp = 835, level = 15 }, -- Root Tea
-    [249868] = { mp = 1345, level = 25 }, -- Triage Tea
-    [249869] = { mp = 1992, level = 35 }, -- Sunny Tea
-    [249870] = { mp = 2934, level = 45 }, -- Sage's Tea
-    [249871] = { mp = 151, level = 1 }, -- Venomous Smoothie
-    [249872] = { mp = 437, level = 5 }, -- Slimy Smoothie
-    [249873] = { mp = 835, level = 15 }, -- Mrrggl Smrrthle
-    [249874] = { mp = 1345, level = 25 }, -- Calcified Smoothie
-    [249875] = { mp = 1992, level = 35 }, -- Spicy Smoothie
-    [249876] = { mp = 2934, level = 45 }, -- Wicked Smoothie
-    [250065] = { hp = 1392, level = 35 }, -- Savory Stag Sliders
-    [250066] = { hp = 2148, level = 45 }, -- Soaring Pamplona
-    [250067] = { hp = 2148, level = 45 }, -- Bat Hachee
-    [250068] = { hp = 2148, level = 45 }, -- Savory Turtle Stew
-    [250069] = { hp = 2148, level = 45 }, -- Flank au Poivre
-    [250070] = { hp = 2148, level = 45 }, -- Bear Bruscitti
-    [250071] = { hp = 2148, level = 45 }, -- Steaming Stag Steak
-    [250072] = { hp = 2148, level = 45 }, -- Swiftstrike Steak
-    [250073] = { hp = 875, level = 25 }, -- Raging Raptor Ribs
-    [250074] = { hp = 875, level = 25 }, -- Bear Brisket
-    [250075] = { hp = 2148, level = 45 }, -- Prehistoric Pulled Raptor
-    [250076] = { hp = 1392, level = 35 }, -- Raptor Rouladen
-    [250077] = { hp = 244, level = 5 }, -- Twice-Spiced Raptor Slice
-    [250078] = { hp = 875, level = 25 }, -- Giant Scrambled Eggs
-    [250079] = { hp = 61, level = 1 }, -- Tasty Raptor Bites
-    [250080] = { hp = 244, level = 5 }, -- Breakfast Omelette
-    [250081] = { hp = 2148, level = 45 }, -- Clam Linguine
-    [251917] = { hp = 61, level = 1 }, -- Falorne's Homemade Tart
-    [252022] = { hp = 61, level = 1 }, -- Galestrider Jerky
-    [252023] = { hp = 61, level = 1 }, -- Zaalanarr Sharp
-    [252026] = { hp = 244, level = 5 }, -- Gustberry Pie
-    [252027] = { mp = 437, level = 5 }, -- Gustberry Juice
-    [252028] = { hp = 61, level = 1 }, -- Fresh Gustberry Bread
-    [252029] = { hp = 244, level = 5 }, -- Hippogryph Flank
-    [252030] = { hp = 244, level = 5 }, -- Pungent Skycheddar
-    [252031] = { mp = 151, level = 1 }, -- Crisp Spring Water
-    [252032] = { hp = 244, level = 5 }, -- Red Delicious Stormapple
-    [260623] = { hp = 875, level = 25 }, -- Candied Fruit Sampler
-    [260624] = { hp = 1392, level = 35 }, -- Pristine Peach
-    [260625] = { hp = 1392, level = 35 }, -- Garnished Rice Cake
-    [260627] = { hp = 2148, level = 45 }, -- Savory Shen'dralar Steak
-    [260628] = { hp = 2148, level = 45 }, -- Stuffed Pumpkin
-    [262433] = { hp = 4410, mp = 4410, level = 0 }, -- Ketharas' Hyjal Stew
-    [263509] = { hp = 61, level = 5 }, -- Skywall Souffle
-    [263512] = { hp = 61, level = 5 }, -- Pincer Bites
-    [267341] = { hp = 2148, level = 55 }, -- Sweetpaw Jam
-    [267474] = { hp = 61, level = 1 }, -- Galeswept Forestshroom
-    [268912] = { hp = 244, level = 5 }, -- Expiring Crab Cake
-    [268913] = { hp = 244, level = 5 }, -- Expiring Crocolisk Steak
-    [274971] = { hp = 875, level = 25 }, -- Briny Seafood Stew
-    [274976] = { hp = 875, level = 25 }, -- Plain Ol' Paletusk
-    [275893] = { hp = 244, level = 0 }, -- Searing Gourd
-    [278117] = { hp = 244, level = 5 }, -- Hard Boiled Eggs
-    [278118] = { hp = 875, level = 25 }, -- Rich Broth
-    [278119] = { hp = 61, level = 1 }, -- Bread with Butter
-    [278120] = { hp = 875, level = 25 }, -- Fruit Platter
-    [278121] = { hp = 552, level = 15 }, -- Smoked Sausage
-    [278122] = { hp = 2148, level = 45 }, -- Carrot Salad
-    [278265] = { hp = 30, level = 1 }, -- Nutritious Slime Sludge
-    [278569] = { hp = 61, level = 1 }, -- Yesterday's Leftovers
-    [282018] = { hpPct = 100, mpPct = 100, level = 1 }, -- Restorative Bread
-    [286152] = { hp = 1392, level = 35 }, -- Plated Armorfish
-    [287963] = { hp = 2148, level = 1 }, -- Roasted Quail
-    [287964] = { mp = 2934, level = 1 }, -- Morning Glory Dew
-    [287973] = { hp = 1392, level = 1 }, -- Tender Wolf Steak
-    [287974] = { hp = 2148, level = 1 }, -- Grilled Squid
+    [117] = { hp = 61, level = 1, auras = { 433 } }, -- Tough Jerky
+    [159] = { mp = 151, level = 1, auras = { 430 } }, -- Refreshing Spring Water
+    [414] = { hp = 244, level = 5, auras = { 434 } }, -- Dalaran Sharp
+    [422] = { hp = 552, level = 15, auras = { 435 } }, -- Dwarven Mild
+    [724] = { hp = 244, level = 5, auras = { 434 } }, -- Goretusk Liver Pie
+    [733] = { hp = 244, level = 5, auras = { 434 } }, -- Westfall Stew
+    [787] = { hp = 244, level = 1, auras = { 434 } }, -- Slitherskin Mackerel
+    [961] = { hp = 61, level = 0, auras = { 433 } }, -- Healing Herb
+    [1017] = { hp = 552, level = 15, auras = { 435 } }, -- Seasoned Wolf Kabob
+    [1082] = { hp = 244, level = 5, auras = { 434 } }, -- Redridge Goulash
+    [1113] = { hp = 244, level = 5, auras = { 434 } }, -- Conjured Bread
+    [1114] = { hp = 552, level = 15, auras = { 435 } }, -- Conjured Rye
+    [1119] = { hp = 552, level = 0, auras = { 435 } }, -- Bottled Spirits
+    [1179] = { mp = 437, level = 5, auras = { 431 } }, -- Ice Cold Milk
+    [1205] = { mp = 835, level = 15, auras = { 432 } }, -- Melon Juice
+    [1326] = { hp = 244, level = 0, auras = { 434 } }, -- Sauteed Sunfish
+    [1401] = { mp = 60, level = 4, auras = { 833 } }, -- Green Tea Leaf
+    [1487] = { hp = 875, level = 25, auras = { 1127 } }, -- Conjured Pumpernickel
+    [1645] = { mp = 1992, level = 35, auras = { 1135 } }, -- Moonberry Juice
+    [1707] = { hp = 875, level = 25, auras = { 1127 } }, -- Stormwind Brie
+    [1708] = { mp = 1345, level = 25, auras = { 1133 } }, -- Sweet Nectar
+    [2070] = { hp = 61, level = 1, auras = { 433 } }, -- Darnassian Bleu
+    [2136] = { mp = 835, level = 15, auras = { 432 } }, -- Conjured Purified Water
+    [2287] = { hp = 244, level = 5, auras = { 434 } }, -- Haunch of Meat
+    [2288] = { mp = 437, level = 5, auras = { 431 } }, -- Conjured Fresh Water
+    [2679] = { hp = 61, level = 1, auras = { 433 } }, -- Charred Wolf Meat
+    [2680] = { hp = 61, level = 1, auras = { 433 } }, -- Spiced Wolf Meat
+    [2681] = { hp = 61, level = 1, auras = { 433 } }, -- Roasted Boar Meat
+    [2682] = { hp = 61, level = 1, auras = { 433 } }, -- Cooked Crab Claw
+    [2683] = { hp = 244, level = 5, auras = { 434 } }, -- Crab Cake
+    [2684] = { hp = 244, level = 5, auras = { 434 } }, -- Coyote Steak
+    [2685] = { hp = 552, level = 15, auras = { 435 } }, -- Succulent Pork Ribs
+    [2687] = { hp = 244, level = 5, auras = { 434 } }, -- Dry Pork Ribs
+    [2888] = { hp = 61, level = 1, auras = { 433 } }, -- Beer Basted Boar Ribs
+    [3220] = { hp = 244, level = 5, auras = { 434 } }, -- Blood Sausage
+    [3448] = { hp = 294, mp = 294, level = 0, auras = { 2639 } }, -- Senggin Root
+    [3662] = { hp = 244, level = 5, auras = { 434 } }, -- Crocolisk Steak
+    [3663] = { hp = 61, level = 1, auras = { 433 } }, -- Murloc Fin Soup
+    [3664] = { hp = 552, level = 15, auras = { 435 } }, -- Crocolisk Gumbo
+    [3665] = { hp = 552, level = 15, auras = { 435 } }, -- Curiously Tasty Omelet
+    [3666] = { hp = 552, level = 15, auras = { 435 } }, -- Gooey Spider Cake
+    [3726] = { hp = 244, level = 5, auras = { 434 } }, -- Big Bear Steak
+    [3727] = { hp = 552, level = 15, auras = { 435 } }, -- Hot Lion Chops
+    [3728] = { hp = 875, level = 25, auras = { 1127 } }, -- Tasty Lion Steak
+    [3729] = { hp = 552, level = 15, auras = { 435 } }, -- Soothing Turtle Bisque
+    [3770] = { hp = 552, level = 15, auras = { 435 } }, -- Mutton Chop
+    [3771] = { hp = 875, level = 25, auras = { 1127 } }, -- Wild Hog Shank
+    [3772] = { mp = 1345, level = 25, auras = { 1133 } }, -- Conjured Spring Water
+    [3927] = { hp = 1392, level = 35, auras = { 1129 } }, -- Fine Aged Cheddar
+    [4457] = { hp = 875, level = 25, auras = { 1127 } }, -- Barbecued Buzzard Wing
+    [4536] = { hp = 61, level = 1, auras = { 433 } }, -- Shiny Red Apple
+    [4537] = { hp = 244, level = 5, auras = { 434 } }, -- Tel'Abim Banana
+    [4538] = { hp = 552, level = 15, auras = { 435 } }, -- Snapvine Watermelon
+    [4539] = { hp = 875, level = 25, auras = { 1127 } }, -- Goldenbark Apple
+    [4540] = { hp = 61, level = 1, auras = { 433 } }, -- Tough Hunk of Bread
+    [4541] = { hp = 244, level = 5, auras = { 434 } }, -- Freshly Baked Bread
+    [4542] = { hp = 552, level = 15, auras = { 435 } }, -- Moist Cornbread
+    [4544] = { hp = 875, level = 25, auras = { 1127 } }, -- Mulgore Spice Bread
+    [4592] = { hp = 552, level = 5, auras = { 435 } }, -- Longjaw Mud Snapper
+    [4593] = { hp = 552, level = 15, auras = { 435 } }, -- Bristle Whisker Catfish
+    [4594] = { hp = 875, level = 25, auras = { 1127 } }, -- Rockscale Cod
+    [4599] = { hp = 1392, level = 35, auras = { 1129 } }, -- Cured Ham Steak
+    [4601] = { hp = 1392, level = 35, auras = { 1129 } }, -- Soft Banana Bread
+    [4602] = { hp = 1392, level = 35, auras = { 1129 } }, -- Moon Harvest Pumpkin
+    [4604] = { hp = 61, level = 1, auras = { 433 } }, -- Forest Mushroom Cap
+    [4605] = { hp = 244, level = 5, auras = { 434 } }, -- Red-speckled Mushroom
+    [4606] = { hp = 552, level = 15, auras = { 435 } }, -- Spongy Morel
+    [4607] = { hp = 875, level = 25, auras = { 1127 } }, -- Delicious Cave Mold
+    [4608] = { hp = 1392, level = 35, auras = { 1129 } }, -- Raw Black Truffle
+    [4656] = { hp = 61, level = 1, auras = { 433 } }, -- Small Pumpkin
+    [4791] = { mp = 1345, level = 25, auras = { 1133 } }, -- Enchanted Water
+    [5057] = { hp = 61, level = 1, auras = { 433 } }, -- Ripe Watermelon
+    [5066] = { hp = 244, level = 5, auras = { 434 } }, -- Fissure Plant
+    [5095] = { hp = 61, level = 5, auras = { 433 } }, -- Rainbow Fin Albacore
+    [5349] = { hp = 61, level = 1, auras = { 433 } }, -- Conjured Muffin
+    [5350] = { mp = 151, level = 1, auras = { 430 } }, -- Conjured Water
+    [5472] = { hp = 61, level = 1, auras = { 433 } }, -- Kaldorei Spider Kabob
+    [5473] = { hp = 294, level = 1, auras = { 6410 } }, -- Scorpid Surprise
+    [5474] = { hp = 61, level = 1, auras = { 433 } }, -- Roasted Kodo Meat
+    [5476] = { hp = 244, level = 5, auras = { 434 } }, -- Fillet of Frenzy
+    [5477] = { hp = 61, level = 1, auras = { 433 } }, -- Strider Stew
+    [5478] = { hp = 552, level = 15, auras = { 435 } }, -- Dig Rat Stew
+    [5479] = { hp = 244, level = 5, auras = { 434 } }, -- Crispy Lizard Tail
+    [5480] = { hp = 552, level = 15, auras = { 435 } }, -- Lean Venison
+    [5525] = { hp = 61, level = 1, auras = { 433 } }, -- Boiled Clams
+    [5526] = { hp = 244, level = 5, auras = { 434 } }, -- Clam Chowder
+    [5527] = { hp = 552, level = 15, auras = { 5006 } }, -- Goblin Deviled Clams
+    [5845] = { hp = 552, level = 15, auras = { 435 } }, -- Flank of Meat
+    [6038] = { hp = 875, level = 25, auras = { 1127 } }, -- Giant Clam Scorcho
+    [6290] = { hp = 61, level = 1, auras = { 433 } }, -- Brilliant Smallfish
+    [6299] = { hp = 30, level = 1, auras = { 7737 } }, -- Sickly Looking Fish
+    [6316] = { hp = 61, level = 5, auras = { 433 } }, -- Loch Frenzy Delight
+    [6458] = { hp = 61, level = 5, auras = { 433 } }, -- Oil Covered Fish
+    [6807] = { hp = 875, level = 0, auras = { 1127 } }, -- Frog Leg Stew
+    [6887] = { hp = 1392, level = 35, auras = { 1129 } }, -- Spotted Yellowtail
+    [6888] = { hp = 61, level = 1, auras = { 433 } }, -- Herb Baked Egg
+    [6890] = { hp = 61, level = 1, auras = { 433 } }, -- Smoked Bear Meat
+    [7097] = { hp = 61, level = 1, auras = { 433 } }, -- Leg Meat
+    [7228] = { hp = 552, level = 15, auras = { 435 } }, -- Tigule's Strawberry Ice Cream
+    [7806] = { hp = 61, level = 1, auras = { 5004 } }, -- Lollipop
+    [7807] = { hp = 61, level = 1, auras = { 5004 } }, -- Candy Bar
+    [7808] = { hp = 61, level = 1, auras = { 5004 } }, -- Chocolate Square
+    [8075] = { hp = 1392, level = 35, auras = { 1129 } }, -- Conjured Sourdough
+    [8076] = { hp = 2148, level = 45, auras = { 1131 } }, -- Conjured Sweet Roll
+    [8077] = { mp = 1992, level = 35, auras = { 1135 } }, -- Conjured Mineral Water
+    [8078] = { mp = 2934, level = 45, auras = { 1137 } }, -- Conjured Sparkling Water
+    [8079] = { mp = 4200, level = 55, auras = { 22734 } }, -- Conjured Crystal Water
+    [8364] = { hp = 875, level = 25, auras = { 1127 } }, -- Mithril Head Trout
+    [8543] = { hp = 875, level = 25, auras = { 1127 } }, -- Underwater Mushroom Cap
+    [8766] = { mp = 2934, level = 45, auras = { 1137 } }, -- Morning Glory Dew
+    [8932] = { hp = 2148, level = 45, auras = { 1131 } }, -- Alterac Swiss
+    [8948] = { hp = 2148, level = 45, auras = { 1131 } }, -- Dried King Bolete
+    [8950] = { hp = 2148, level = 45, auras = { 1131 } }, -- Homemade Cherry Pie
+    [8952] = { hp = 2148, level = 45, auras = { 1131 } }, -- Roasted Quail
+    [8953] = { hp = 2148, level = 45, auras = { 1131 } }, -- Deep Fried Plantains
+    [8957] = { hp = 1392, level = 45, auras = { 1129 } }, -- Spinefin Halibut
+    [9451] = { mp = 835, level = 15, auras = { 432 } }, -- Bubbling Water
+    [9681] = { hp = 1392, level = 35, auras = { 1129 } }, -- Grilled King Crawler Legs
+    [10841] = { mp = 1345, level = 25, auras = { 1133 } }, -- Goldthorn Tea
+    [11109] = { hp = 30, level = 1, auras = { 7737 } }, -- Special Chicken Feed
+    [11415] = { hp = 2148, level = 45, auras = { 1131 } }, -- Mixed Berries
+    [11444] = { hp = 2148, level = 45, auras = { 1131 } }, -- Grim Guzzler Boar
+    [11584] = { hp = 61, level = 0, auras = { 5004 } }, -- Cactus Apple Surprise
+    [11950] = { hp = 1933, level = 45, auras = { 26030 } }, -- Windblossom Berries
+    [12209] = { hp = 552, level = 15, auras = { 435 } }, -- Lean Wolf Steak
+    [12210] = { hp = 552, level = 15, auras = { 435 } }, -- Roast Raptor
+    [12212] = { hp = 1392, level = 35, auras = { 1129 } }, -- Jungle Stew
+    [12213] = { hp = 244, level = 5, auras = { 434 } }, -- Carrion Surprise
+    [12214] = { hp = 552, level = 15, auras = { 435 } }, -- Mystery Stew
+    [12215] = { hp = 875, level = 25, auras = { 1127 } }, -- Heavy Kodo Stew
+    [12216] = { hp = 875, level = 25, auras = { 1127 } }, -- Spiced Chili Crab
+    [12218] = { hp = 1392, level = 35, auras = { 1129 } }, -- Monster Omelet
+    [12224] = { hp = 61, level = 1, auras = { 433 } }, -- Crispy Bat Wing
+    [12238] = { hp = 244, level = 5, auras = { 434 } }, -- Darkshore Grouper
+    [12763] = { hp = 2148, level = 45, auras = { 1131 } }, -- Un'Goro Etherfruit
+    [13546] = { hp = 1392, level = 25, auras = { 1129 } }, -- Bloodbelly Fish
+    [13851] = { hp = 875, level = 25, auras = { 1127 } }, -- Hot Wolf Ribs
+    [13927] = { hp = 1392, level = 35, auras = { 1129 } }, -- Cooked Glossy Mightfish
+    [13928] = { hp = 2148, level = 35, auras = { 1131 } }, -- Grilled Squid
+    [13929] = { hp = 2148, level = 35, auras = { 1131 } }, -- Hot Smoked Bass
+    [13930] = { hp = 1392, level = 35, auras = { 1129 } }, -- Filet of Redgill
+    [13931] = { hp = 1392, level = 35, auras = { 1129 } }, -- Nightfin Soup
+    [13932] = { hp = 2148, level = 35, auras = { 1131 } }, -- Poached Sunscale Salmon
+    [13933] = { hp = 2148, level = 45, auras = { 1131 } }, -- Lobster Stew
+    [13934] = { hp = 2148, level = 45, auras = { 1131 } }, -- Mightfish Steak
+    [13935] = { hp = 2148, level = 45, auras = { 1131 } }, -- Baked Salmon
+    [16166] = { hp = 61, level = 1, auras = { 433 } }, -- Bean Soup
+    [16167] = { hp = 244, level = 5, auras = { 434 } }, -- Versicolor Treat
+    [16168] = { hp = 1392, level = 35, auras = { 1129 } }, -- Heaven Peach
+    [16169] = { hp = 875, level = 25, auras = { 1127 } }, -- Wild Ricecake
+    [16170] = { hp = 552, level = 15, auras = { 435 } }, -- Steamed Mandu
+    [16171] = { hp = 2148, level = 45, auras = { 1131 } }, -- Shinsollo
+    [16766] = { hp = 1392, level = 35, auras = { 1129 } }, -- Undermine Clam Chowder
+    [16971] = { hp = 1392, level = 40, auras = { 10256 } }, -- Clamlette Surprise
+    [17119] = { hp = 244, level = 5, auras = { 434 } }, -- Deeprun Rat Kabob
+    [17197] = { hp = 61, level = 1, auras = { 5004 } }, -- Gingerbread Cookie
+    [17198] = { hp = 61, level = 1, auras = { 21149 } }, -- Egg Nog
+    [17222] = { hp = 1392, level = 35, auras = { 1129 } }, -- Spider Sausage
+    [17344] = { hp = 61, level = 1, auras = { 433 } }, -- Candy Cane
+    [17404] = { mp = 437, level = 5, auras = { 431 } }, -- Blended Bean Brew
+    [17405] = { mp = 1345, level = 25, auras = { 1133 } }, -- Green Garden Tea
+    [17406] = { hp = 244, level = 5, auras = { 434 } }, -- Holiday Cheesewheel
+    [17407] = { hp = 875, level = 25, auras = { 1127 } }, -- Graccu's Homemade Meat Pie
+    [17408] = { hp = 1392, level = 35, auras = { 1129 } }, -- Spicy Beefstick
+    [18045] = { hp = 1392, level = 35, auras = { 1129 } }, -- Tender Wolf Steak
+    [18254] = { hp = 1392, level = 35, auras = { 1129 } }, -- Runn Tum Tuber Surprise
+    [18255] = { hp = 1392, level = 45, auras = { 1129 } }, -- Runn Tum Tuber
+    [18300] = { mp = 4200, level = 55, auras = { 22734 } }, -- Hyjal Nectar
+    [18632] = { hp = 875, level = 25, auras = { 1127 } }, -- Moonbrook Riot Taffy
+    [18633] = { hp = 244, level = 5, auras = { 434 } }, -- Styleen's Sour Suckerpop
+    [18635] = { hp = 1392, level = 35, auras = { 1129 } }, -- Bellara's Nutterbar
+    [19223] = { hp = 61, level = 1, auras = { 433 } }, -- Darkmoon Dog
+    [19224] = { hp = 875, level = 25, auras = { 1127 } }, -- Red Hot Wings
+    [19225] = { hp = 2148, level = 45, auras = { 1131 } }, -- Deep Fried Candybar
+    [19299] = { mp = 835, level = 15, auras = { 432 } }, -- Fizzy Faire Drink
+    [19300] = { mp = 1992, level = 35, auras = { 1135 } }, -- Bottled Winterspring Water
+    [19301] = { hp = 4410, mp = 4410, level = 51, auras = { 26260, 26261 } }, -- Alterac Manna Biscuit
+    [19304] = { hp = 244, level = 5, auras = { 434 } }, -- Spiced Beef Jerky
+    [19305] = { hp = 552, level = 15, auras = { 435 } }, -- Pickled Kodo Foot
+    [19306] = { hp = 1392, level = 35, auras = { 1129 } }, -- Crunchy Frog
+    [19318] = { mp = 4410, level = 55, auras = { 23698 } }, -- Bottled Alterac Spring Water
+    [19696] = { hpPct = 50, level = 0, auras = { 24005 } }, -- Harvest Bread
+    [19994] = { hpPct = 50, level = 0, auras = { 24005 } }, -- Harvest Fruit
+    [19995] = { hpPct = 50, level = 0, auras = { 24005 } }, -- Harvest Boar
+    [19996] = { hpPct = 50, level = 0, auras = { 24005 } }, -- Harvest Fish
+    [19997] = { mpPct = 60, level = 0, auras = { 24355 } }, -- Harvest Nectar
+    [20031] = { hp = 2550, mp = 4410, level = 55, auras = { 26401, 26402 } }, -- Essence Mango
+    [20074] = { hp = 875, level = 25, auras = { 1127 } }, -- Heavy Crocolisk Stew
+    [20388] = { hpPct = 75, mpPct = 75, level = 0, auras = { 24707 } }, -- Lollipop
+    [20389] = { hpPct = 75, mpPct = 75, level = 0, auras = { 24707 } }, -- Candy Corn
+    [20390] = { hpPct = 75, mpPct = 75, level = 0, auras = { 24707 } }, -- Candy Bar
+    [20452] = { hp = 2148, level = 45, auras = { 1131 } }, -- Smoked Desert Dumplings
+    [20516] = { hpPct = 48, level = 0, auras = { 24869 } }, -- Bobbing Apple
+    [21023] = { hp = 2550, level = 45, auras = { 25660 } }, -- Dirge's Kickin' Chimaerok Chops
+    [21030] = { hp = 1392, level = 35, auras = { 1129 } }, -- Darnassus Kimchi Pie
+    [21031] = { hp = 2148, level = 45, auras = { 1131 } }, -- Cabbage Kimchi
+    [21033] = { hp = 2148, level = 45, auras = { 1131 } }, -- Radish Kimchi
+    [21072] = { hp = 244, level = 10, auras = { 434 } }, -- Smoked Sagefish
+    [21215] = { hpPct = 100, mpPct = 100, level = 40, auras = { 25990 } }, -- Graccu's Mince Meat Fruitcake
+    [21217] = { hp = 552, level = 30, auras = { 435 } }, -- Sagefish Delight
+    [21235] = { hpPct = 50, level = 0, auras = { 24005 } }, -- Winter Veil Roast
+    [21241] = { mpPct = 60, level = 0, auras = { 24355 } }, -- Winter Veil Eggnog
+    [21254] = { hpPct = 48, level = 0, auras = { 24869 } }, -- Winter Veil Cookie
+    [21537] = { hpPct = 100, mpPct = 75, level = 0, auras = { 26263 } }, -- Festival Dumplings
+    [21552] = { hp = 1392, level = 35, auras = { 1129 } }, -- Striped Yellowtail
+    [22324] = { hp = 2148, level = 45, auras = { 1131 } }, -- Winter Kimchi
+    [22895] = { hp = 3180, level = 55, auras = { 29073 } }, -- Conjured Cinnamon Roll
+    [23160] = { hp = 2148, level = 45, auras = { 29008 } }, -- Friendship Bread
+    [23161] = { mp = 2934, level = 45, auras = { 29007 } }, -- Freshly-Squeezed Lemonade
+    [23172] = { hpPct = 100, mpPct = 75, level = 0, auras = { 29055 } }, -- Refreshing Red Apple
+    [23176] = { hp = 840, mp = 1260, level = 0, auras = { 29039, 29038 } }, -- Fizzy Energy Drink
+    [206177] = { hp = 61, level = 1, auras = { 5004 } }, -- Pine Nut Butter
+    [231778] = { mp = 5100, level = 55, auras = { 468767 } }, -- Mountain Spring Water
+    [232436] = { hp = 2148, level = 45, auras = { 470362 } }, -- Darkclaw Bisque
+    [232438] = { hp = 1392, level = 35, auras = { 470369 } }, -- Smoked Redgill
+    [238637] = { hp = 2550, level = 55, auras = { 1225769 } }, -- Prowler Steak
+    [238638] = { hp = 2550, level = 55, auras = { 1225771 } }, -- Filet o' Flank
+    [238639] = { hp = 2550, level = 55, auras = { 1225772 } }, -- Sunrise Omelette
+    [240945] = { hp = 61, level = 1, auras = { 433 } }, -- Slice of Carrie's Apple Pie
+    [248613] = { hp = 552, level = 15, auras = { 435 } }, -- Lightning in a Bottle
+    [249796] = { hp = 1392, level = 45, auras = { 1129 } }, -- Hyjal Berries
+    [249865] = { mp = 151, level = 1, auras = { 430 } }, -- Peace Tea
+    [249866] = { mp = 437, level = 5, auras = { 431 } }, -- Royal Tea
+    [249867] = { mp = 835, level = 15, auras = { 432 } }, -- Root Tea
+    [249868] = { mp = 1345, level = 25, auras = { 1133 } }, -- Triage Tea
+    [249869] = { mp = 1992, level = 35, auras = { 1135 } }, -- Sunny Tea
+    [249870] = { mp = 2934, level = 45, auras = { 1137 } }, -- Sage's Tea
+    [249871] = { mp = 151, level = 1, auras = { 430 } }, -- Venomous Smoothie
+    [249872] = { mp = 437, level = 5, auras = { 431 } }, -- Slimy Smoothie
+    [249873] = { mp = 835, level = 15, auras = { 432 } }, -- Mrrggl Smrrthle
+    [249874] = { mp = 1345, level = 25, auras = { 1133 } }, -- Calcified Smoothie
+    [249875] = { mp = 1992, level = 35, auras = { 1135 } }, -- Spicy Smoothie
+    [249876] = { mp = 2934, level = 45, auras = { 1137 } }, -- Wicked Smoothie
+    [250065] = { hp = 1392, level = 35, auras = { 1129 } }, -- Savory Stag Sliders
+    [250066] = { hp = 2148, level = 45, auras = { 1131 } }, -- Soaring Pamplona
+    [250067] = { hp = 2148, level = 45, auras = { 1131 } }, -- Bat Hachee
+    [250068] = { hp = 2148, level = 45, auras = { 1131 } }, -- Savory Turtle Stew
+    [250069] = { hp = 2148, level = 45, auras = { 1131 } }, -- Flank au Poivre
+    [250070] = { hp = 2148, level = 45, auras = { 1131 } }, -- Bear Bruscitti
+    [250071] = { hp = 2148, level = 45, auras = { 1131 } }, -- Steaming Stag Steak
+    [250072] = { hp = 2148, level = 45, auras = { 1131 } }, -- Swiftstrike Steak
+    [250073] = { hp = 875, level = 25, auras = { 1127 } }, -- Raging Raptor Ribs
+    [250074] = { hp = 875, level = 25, auras = { 1127 } }, -- Bear Brisket
+    [250075] = { hp = 2148, level = 45, auras = { 1131 } }, -- Prehistoric Pulled Raptor
+    [250076] = { hp = 1392, level = 35, auras = { 1129 } }, -- Raptor Rouladen
+    [250077] = { hp = 244, level = 5, auras = { 434 } }, -- Twice-Spiced Raptor Slice
+    [250078] = { hp = 875, level = 25, auras = { 1127 } }, -- Giant Scrambled Eggs
+    [250079] = { hp = 61, level = 1, auras = { 433 } }, -- Tasty Raptor Bites
+    [250080] = { hp = 244, level = 5, auras = { 434 } }, -- Breakfast Omelette
+    [250081] = { hp = 2148, level = 45, auras = { 1131 } }, -- Clam Linguine
+    [251917] = { hp = 61, level = 1, auras = { 433 } }, -- Falorne's Homemade Tart
+    [252022] = { hp = 61, level = 1, auras = { 433 } }, -- Galestrider Jerky
+    [252023] = { hp = 61, level = 1, auras = { 433 } }, -- Zaalanarr Sharp
+    [252026] = { hp = 244, level = 5, auras = { 434 } }, -- Gustberry Pie
+    [252027] = { mp = 437, level = 5, auras = { 431 } }, -- Gustberry Juice
+    [252028] = { hp = 61, level = 1, auras = { 433 } }, -- Fresh Gustberry Bread
+    [252029] = { hp = 244, level = 5, auras = { 434 } }, -- Hippogryph Flank
+    [252030] = { hp = 244, level = 5, auras = { 434 } }, -- Pungent Skycheddar
+    [252031] = { mp = 151, level = 1, auras = { 430 } }, -- Crisp Spring Water
+    [252032] = { hp = 244, level = 5, auras = { 434 } }, -- Red Delicious Stormapple
+    [260623] = { hp = 875, level = 25, auras = { 1127 } }, -- Candied Fruit Sampler
+    [260624] = { hp = 1392, level = 35, auras = { 1129 } }, -- Pristine Peach
+    [260625] = { hp = 1392, level = 35, auras = { 1129 } }, -- Garnished Rice Cake
+    [260627] = { hp = 2148, level = 45, auras = { 1131 } }, -- Savory Shen'dralar Steak
+    [260628] = { hp = 2148, level = 45, auras = { 1131 } }, -- Stuffed Pumpkin
+    [262433] = { hp = 4410, mp = 4410, level = 0, auras = { 1269354 } }, -- Ketharas' Hyjal Stew
+    [263509] = { hp = 61, level = 5, auras = { 433 } }, -- Skywall Souffle
+    [263512] = { hp = 61, level = 5, auras = { 433 } }, -- Pincer Bites
+    [267341] = { hp = 2148, level = 55, auras = { 1131 } }, -- Sweetpaw Jam
+    [267474] = { hp = 61, level = 1, auras = { 433 } }, -- Galeswept Forestshroom
+    [268912] = { hp = 244, level = 5, auras = { 434 } }, -- Expiring Crab Cake
+    [268913] = { hp = 244, level = 5, auras = { 434 } }, -- Expiring Crocolisk Steak
+    [274971] = { hp = 875, level = 25, auras = { 1127 } }, -- Briny Seafood Stew
+    [274976] = { hp = 875, level = 25, auras = { 1127 } }, -- Plain Ol' Paletusk
+    [275893] = { hp = 244, level = 0, auras = { 434 } }, -- Searing Gourd
+    [278117] = { hp = 244, level = 5, auras = { 434 } }, -- Hard Boiled Eggs
+    [278118] = { hp = 875, level = 25, auras = { 1127 } }, -- Rich Broth
+    [278119] = { hp = 61, level = 1, auras = { 433 } }, -- Bread with Butter
+    [278120] = { hp = 875, level = 25, auras = { 1127 } }, -- Fruit Platter
+    [278121] = { hp = 552, level = 15, auras = { 435 } }, -- Smoked Sausage
+    [278122] = { hp = 2148, level = 45, auras = { 1131 } }, -- Carrot Salad
+    [278265] = { hp = 30, level = 1, auras = { 7737 } }, -- Nutritious Slime Sludge
+    [278569] = { hp = 61, level = 1, auras = { 433 } }, -- Yesterday's Leftovers
+    [282018] = { hpPct = 100, mpPct = 100, level = 1, auras = { 1312719 } }, -- Restorative Bread
+    [286152] = { hp = 1392, level = 35, auras = { 1129 } }, -- Plated Armorfish
+    [287963] = { hp = 2148, level = 1, auras = { 1131 } }, -- Roasted Quail
+    [287964] = { mp = 2934, level = 1, auras = { 1330734 } }, -- Morning Glory Dew
+    [287973] = { hp = 1392, level = 1, auras = { 1129 } }, -- Tender Wolf Steak
+    [287974] = { hp = 2148, level = 1, auras = { 1131 } }, -- Grilled Squid
 }
 
 -- Aura spell ID = health and mana restored per second, flat or percent of maximum.
