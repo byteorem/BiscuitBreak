@@ -630,6 +630,14 @@ local function BuildBarPage(page)
     end)
 end
 
+-- The version for display, such as "v1.2.0". The packager writes the git tag
+-- into the .toc; a copy that was not packaged still holds the placeholder.
+function Options.Version()
+    local version = C_AddOns.GetAddOnMetadata(addonName, "Version")
+    if not version or version:find("@", 1, true) then return "dev" end
+    return "v" .. version:gsub("^v", "")
+end
+
 -- The addon's icon, name, version and what it does, in a strip.
 local function NewCard(parent)
     local card = CreateFrame("Frame", nil, parent, "InsetFrameTemplate")
@@ -646,7 +654,7 @@ local function NewCard(parent)
 
     local version = card:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     version:SetPoint("BOTTOMLEFT", name, "BOTTOMRIGHT", 8, 2)
-    version:SetText("v" .. (C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"))
+    version:SetText(Options.Version())
 
     local notes = card:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     notes:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -6)

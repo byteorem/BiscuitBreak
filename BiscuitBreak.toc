@@ -3,7 +3,9 @@
 ## Title: BiscuitBreak
 ## Notes: Use your strongest food and drink with one macro. The recovery bar turns green when the resources they restore are full.
 ## Author: byteorem
-## Version: 0.0.1
+## Version: @project-version@
+## X-Curse-Project-ID: 1816118
+## X-Wago-ID: bGoYVJ60
 ## IconTexture: Interface\AddOns\BiscuitBreak\Media\Icon.tga
 ## Category: Quality of Life
 ## AddonCompartmentFunc: BiscuitBreak_OnAddonCompartmentClick

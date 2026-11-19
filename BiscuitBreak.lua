@@ -166,7 +166,7 @@ local COMMANDS = {
     [""] = function() ns.Options.Toggle() end,
     reset = function() StaticPopup_Show("BISCUITBREAK_RESET") end,
     version = function()
-        ns.Print(string.format(L["Version %s"], C_AddOns.GetAddOnMetadata(addonName, "Version") or "?"))
+        ns.Print(string.format(L["Version %s"], ns.Options.Version()))
     end,
     help = function()
         ns.Print(L["Commands:"])
