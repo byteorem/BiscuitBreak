@@ -1,5 +1,5 @@
-# Builds the addon zip and uploads it when a version tag is pushed.
-# Uploads go only to the sites whose project ID is in BiscuitBreak.toc
+# Builds the addon zip and uploads it when a version tag (v1.2.3) is pushed.
+# Uploads go only to the sites whose project ID is in the .toc
 # (## X-Curse-Project-ID, ## X-Wago-ID) and whose API key is set as a
 # repository secret. GitHub releases need no setup.
 name: Release
@@ -7,7 +7,7 @@ name: Release
 on:
   push:
     tags:
-      - "**"
+      - "v*"
 
 jobs:
   release:
@@ -15,11 +15,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the changelog is built from the commit history
 
-      - uses: BigWigsMods/packager@v2
+      - uses: BigWigsMods/packager@01e8631a69c69d7654c788d152630d5fed9e3812 # v2.7.0
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
           WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
