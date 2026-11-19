@@ -727,7 +727,12 @@ local function OnUpdate()
 end
 
 local function OnEvent(_, event, _, powerType)
-    if event == "UNIT_POWER_FREQUENT" and powerType ~= "MANA" then return end
+    -- Other power types are skipped. A hidden power type cannot be compared,
+    -- so it counts as mana.
+    if event == "UNIT_POWER_FREQUENT" and not (issecretvalue and issecretvalue(powerType))
+        and powerType ~= "MANA" then
+        return
+    end
     -- Fresh health from the server: stop counting it as regained ahead.
     if event == "UNIT_HEALTH" then main.healthMark.since = GetTime() end
     UpdateResources()
