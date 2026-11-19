@@ -113,6 +113,7 @@ end
 handlers.UNIT_MAXPOWER = ns.Scan.Request
 
 function handlers.PLAYER_ENTERING_WORLD()
+    ns.Meal.BagsChanged()
     ns.Scan.Request()
     ns.Meal.Request()
     C_Timer.After(MACRO_WAIT, ns.Macro.SetReady)
@@ -131,7 +132,10 @@ function handlers.PLAYER_REGEN_ENABLED()
     ns.Scan.Request()
 end
 
-handlers.BAG_UPDATE_DELAYED = ns.Scan.Request
+function handlers.BAG_UPDATE_DELAYED()
+    ns.Meal.BagsChanged()
+    ns.Scan.Request()
+end
 
 frame:SetScript("OnEvent", function(_, event, ...)
     local handler = handlers[event]

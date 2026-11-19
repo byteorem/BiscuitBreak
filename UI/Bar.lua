@@ -62,7 +62,7 @@ local GLIDE = Enum.StatusBarInterpolation and Enum.StatusBarInterpolation.Expone
 local PREDICT_LIMIT = 5
 
 local SAMPLE_ICON = "Interface\\Icons\\inv_misc_food_73cinnamonroll"
-local SAMPLE_ITEMS = { SAMPLE_ICON, "Interface\\Icons\\inv_drink_07" }
+local SAMPLE_ITEMS = { { icon = SAMPLE_ICON }, { icon = "Interface\\Icons\\inv_drink_07" } }
 -- Seconds the bar takes to fade in, and to fade out after holding still
 -- for FADE_DELAY at the end of a meal.
 local FADE_IN, FADE_OUT, FADE_DELAY = 0.15, 0.4, 0.3
@@ -202,6 +202,20 @@ local function Forget(track)
     track.fresh = true
 end
 
+-- OnEnter of a food or drink icon: the item's tooltip, or the effect's when
+-- the item eaten is not known.
+local function ItemTooltip(self)
+    local entry = self.entry
+    if not entry then return end
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    if entry.item then
+        GameTooltip:SetItemByID(entry.item)
+    else
+        GameTooltip:SetSpellByID(entry.spell)
+    end
+    GameTooltip:Show()
+end
+
 -- The widgets of one bar. Nothing here places it on screen or watches the
 -- game, so the same build serves the bar itself and the preview in its
 -- settings. name: the frame's global name, or nil.
@@ -280,6 +294,7 @@ local function NewBar(parent, name)
     bar.timeText = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 
     -- The food and drink icons, each in a dark edge. Size places them.
+    -- Hovering one shows the item's tooltip.
     bar.items = {}
     for i = 1, MAX_ITEMS do
         local edge = frame:CreateTexture(nil, "BACKGROUND")
@@ -288,29 +303,45 @@ local function NewBar(parent, name)
         local icon = frame:CreateTexture(nil, "ARTWORK")
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         icon:Hide()
-        bar.items[i] = { edge = edge, icon = icon }
+        local hover = CreateFrame("Frame", nil, frame)
+        hover:SetAllPoints(edge)
+        -- Hover only: clicks go through to the world.
+        if hover.EnableMouseMotion then
+            hover:EnableMouseMotion(true)
+        else
+            hover:EnableMouse(true)
+        end
+        hover:SetScript("OnEnter", ItemTooltip)
+        hover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        hover:Hide()
+        bar.items[i] = { edge = edge, icon = icon, hover = hover }
     end
-    bar.itemIcons = {}
+    bar.itemList = {}
 
     return bar
 end
 
--- Shows one small icon per entry of bar.itemIcons, right to left from the
+-- Shows one small icon per entry of bar.itemList, right to left from the
 -- bar's right end, when the setting is on.
+local NONE = {}
 local function ShowItems(bar)
-    local list = ns.db.barItems and bar.itemIcons or {}
+    local list = ns.db.barItems and bar.itemList or NONE
     for i, item in ipairs(bar.items) do
-        local icon = list[i]
-        if icon then item.icon:SetTexture(icon) end
-        item.icon:SetShown(icon ~= nil)
-        item.edge:SetShown(icon ~= nil)
+        local entry = list[i]
+        if entry then item.icon:SetTexture(entry.icon) end
+        item.hover.entry = entry
+        item.icon:SetShown(entry ~= nil)
+        item.edge:SetShown(entry ~= nil)
+        -- Only icons with something to tell take the mouse.
+        item.hover:SetShown(entry ~= nil and (entry.item or entry.spell) ~= nil)
     end
 end
 
-local function SetItems(bar, icons)
-    wipe(bar.itemIcons)
-    for i, icon in ipairs(icons or {}) do
-        bar.itemIcons[i] = icon
+-- entries: { icon, item = item ID or nil, spell = effect spell ID or nil }.
+local function SetItems(bar, entries)
+    wipe(bar.itemList)
+    for i, entry in ipairs(entries or NONE) do
+        bar.itemList[i] = entry
     end
     ShowItems(bar)
 end
@@ -868,7 +899,7 @@ local function ShowMeal(meal)
     end
     RunFill(main, meal.start, math.max(meal.finish - meal.start, 0.1))
     main.icon:SetTexture(meal.icon)
-    SetItems(main, meal.icons)
+    SetItems(main, meal.items)
     main.nameText:SetText(meal.text or "")
     OnUpdate()
     UpdateResources()

@@ -14,13 +14,74 @@ ns.Meal = Meal
 -- More effects than a player can have; stops a runaway loop.
 local MAX_AURAS = 255
 
-local meal = { names = {}, icons = {} } -- reused for every update
+-- Seconds between a food leaving your bags and its effect starting for the
+-- two to be matched.
+local MATCH_WINDOW = 3
+
+local meal = { names = {}, icons = {}, items = {} } -- reused for every update
 local active = false
 local queued = false
 local reported = false
 
+-- The effect alone does not say which item was eaten: many foods share one.
+-- So the bags are counted, and the food whose count fell when the effect
+-- started is taken as the one eaten.
+local counts = {} -- item ID -> how many were carried at the last count
+local spare = {} -- the other count table, swapped in on each count
+local dropped = {} -- item ID -> when its count last fell
+local eaten = {} -- aura spell ID -> { start, item } once matched
+
 local function Hidden(value)
     return issecretvalue ~= nil and issecretvalue(value)
+end
+
+-- Counts the food and drink in your bags and notes which went down.
+local function CountBags()
+    local food = ns.Food
+    wipe(spare)
+    for bag = 0, NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4 do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local id = C_Container.GetContainerItemID(bag, slot)
+            if id and food[id] then
+                local info = C_Container.GetContainerItemInfo(bag, slot)
+                spare[id] = (spare[id] or 0) + (info and info.stackCount or 1)
+            end
+        end
+    end
+    local fell = false
+    local now = GetTime()
+    for id, count in pairs(counts) do
+        if (spare[id] or 0) < count then
+            dropped[id] = now
+            fell = true
+        end
+    end
+    counts, spare = spare, counts
+    return fell
+end
+
+local function HasAura(item, spell)
+    local auras = ns.Food[item].auras
+    for i = 1, #auras do
+        if auras[i] == spell then return true end
+    end
+    return false
+end
+
+-- The item that started the effect spell at start, or nil when no food left
+-- your bags then.
+local function EatenItem(spell, start)
+    local known = eaten[spell]
+    if known and math.abs(known.start - start) < 0.5 then return known.item end
+    local best, bestGap
+    for item, when in pairs(dropped) do
+        local gap = math.abs(when - start)
+        if gap < MATCH_WINDOW and HasAura(item, spell) and (not best or gap < bestGap) then
+            best, bestGap = item, gap
+        end
+    end
+    if best then eaten[spell] = { start = start, item = best } end
+    return best
 end
 
 -- Fills out with the running meal, or leaves out.start nil when there is none.
@@ -32,8 +93,8 @@ local function Read(out)
     for i = #out.names, 1, -1 do
         out.names[i] = nil
     end
-    for i = #out.icons, 1, -1 do
-        out.icons[i] = nil
+    for i = #out.items, 1, -1 do
+        out.items[i] = nil
     end
 
     for i = 1, MAX_AURAS do
@@ -54,15 +115,19 @@ local function Read(out)
             if (rates.mp or rates.mpPct) and (not out.manaEnd or finish > out.manaEnd) then
                 out.mana, out.manaEnd = rates, finish
             end
-            local icon = aura.icon
-            if not Hidden(icon) and icon then
+            -- One small icon per food or drink, for the row above the bar: the
+            -- item's own when it is known, else the effect's.
+            local item = EatenItem(id, start)
+            local icon = item and C_Item.GetItemIconByID(item)
+            if not icon and not Hidden(aura.icon) then icon = aura.icon end
+            if icon then
                 out.icon = out.icon or icon
-                -- One small icon per food or drink, for the row above the bar.
                 local known = false
-                for n = 1, #out.icons do
-                    if out.icons[n] == icon then known = true end
+                for n = 1, #out.items do
+                    local other = out.items[n]
+                    if item and other.item == item or not item and other.spell == id then known = true end
                 end
-                if not known then out.icons[#out.icons + 1] = icon end
+                if not known then out.items[#out.items + 1] = { icon = icon, item = item, spell = id } end
             end
 
             local name = aura.name
@@ -109,10 +174,17 @@ function Meal.Request()
     C_Timer.After(0, Update)
 end
 
+-- The bags changed: count them, and look again at the meal if a food or
+-- drink was used up.
+function Meal.BagsChanged()
+    if active and CountBags() then Meal.Request() end
+end
+
 -- Turns the watching on or off (the "Show the eating bar" setting).
 function Meal.SetActive(on)
     active = on and true or false
     if active then
+        CountBags()
         Meal.Request()
     else
         ns.Bar.End()
