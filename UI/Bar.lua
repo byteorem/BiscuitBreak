@@ -46,10 +46,19 @@ local EDGE = 1
 local TICK_WIDTH = 2
 local SPARK_WIDTH = 1
 local ICON_GAP = 3
--- The small food and drink icons above the bar's top right: their size, the
--- space between them and the space under them.
+-- The small food and drink icons in a row at one corner of the bar: their
+-- size, the space between them and the space between them and the bar.
 local ITEM_SIZE, ITEM_SPACING, ITEM_GAP = 14, 2, 3
 local MAX_ITEMS = 4
+-- Where the row can go, with its name in the settings. The row starts at
+-- the named corner and runs along the bar from there.
+Bar.ITEM_POSITIONS = {
+    { "Above left", "TOPLEFT" },
+    { "Above right", "TOPRIGHT" },
+    { "Below left", "BOTTOMLEFT" },
+    { "Below right", "BOTTOMRIGHT" },
+}
+local DEFAULT_ITEM_POSITION = "TOPLEFT"
 
 -- A duration this long stands still: the sample bar.
 local FROZEN = 1e6
@@ -121,6 +130,20 @@ local function UsesArt()
     return ns.db.barStyle == "Blizzard" and HasArt()
 end
 
+-- The saved corner for the item icons, or the default for anything else.
+local function ItemPosition()
+    local saved = ns.db.barItemsPosition
+    for _, position in ipairs(Bar.ITEM_POSITIONS) do
+        if position[2] == saved then return saved end
+    end
+    return DEFAULT_ITEM_POSITION
+end
+
+-- True when the saved corner puts the item icons below the bar.
+local function ItemsBelow()
+    return ItemPosition():find("^BOTTOM") ~= nil
+end
+
 -- Created once and reused.
 local function Curves()
     if step then return end
@@ -152,6 +175,13 @@ end
 -- A length rounded to whole pixels, and never to none.
 local function Snap(length, pixel)
     return math.max(1, math.floor(length / pixel + 0.5)) * pixel
+end
+
+-- How far the bar's own pieces reach under it, in whole pixels: the cast
+-- bar's text box, or else its frame art's rim. Look must have run.
+local function Underneath(bar, pixel)
+    if bar.textBelow then return Snap(TEXT_GAP, pixel) + Snap(TEXT_BOX_HEIGHT, pixel) end
+    return bar.blizzard and Snap(FRAME_REACH, pixel) or 0
 end
 
 -- Moves a placed frame the fraction of a pixel that puts its corner on one.
@@ -321,8 +351,8 @@ local function NewBar(parent, name)
     return bar
 end
 
--- Shows one small icon per entry of bar.itemList, right to left from the
--- bar's right end, when the setting is on.
+-- Shows one small icon per entry of bar.itemList, in the places Size gave
+-- them, when the setting is on.
 local NONE = {}
 local function ShowItems(bar)
     local list = ns.db.barItems and bar.itemList or NONE
@@ -466,12 +496,19 @@ local function Size(bar, scale)
     bar.icon:SetPoint("TOPLEFT", bar.iconEdge, "TOPLEFT", edge, -edge)
     bar.icon:SetPoint("BOTTOMRIGHT", bar.iconEdge, "BOTTOMRIGHT", -edge, edge)
 
-    -- The food and drink icons, from the bar's top right leftwards.
+    -- The food and drink icons, from the saved corner along the bar. Below
+    -- the bar they clear whatever already hangs under it.
     local itemSize, itemEdge = Snap(ITEM_SIZE, pixel), Snap(EDGE, pixel)
     local spacing, gap = Snap(ITEM_SPACING, pixel), Snap(ITEM_GAP, pixel)
+    local corner = ItemPosition()
+    local below = ItemsBelow()
+    local side = corner:find("LEFT$") and "LEFT" or "RIGHT"
+    local point = (below and "TOP" or "BOTTOM") .. side
+    local y = below and -(gap + Underneath(bar, pixel)) or gap
+    local stride = (side == "LEFT" and 1 or -1) * (itemSize + spacing)
     for i, item in ipairs(bar.items) do
         item.edge:ClearAllPoints()
-        item.edge:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -(i - 1) * (itemSize + spacing), gap)
+        item.edge:SetPoint(point, frame, corner, (i - 1) * stride, y)
         item.edge:SetSize(itemSize, itemSize)
         item.icon:ClearAllPoints()
         item.icon:SetPoint("TOPLEFT", item.edge, "TOPLEFT", itemEdge, -itemEdge)
@@ -538,8 +575,10 @@ local function FitPreview()
     local iconSpace = ns.db.barIcon and height + ICON_GAP + (blizzard and FRAME_REACH or 0) or 0
     -- The text box hangs under the bar.
     local below = preview.textBelow and TEXT_GAP + TEXT_BOX_HEIGHT or 0
-    -- The food and drink icons stand over it.
-    local above = ns.db.barItems and ITEM_GAP + ITEM_SIZE or 0
+    -- The food and drink icons stand over it or hang under it.
+    local items = ns.db.barItems and ITEM_GAP + ITEM_SIZE or 0
+    local above = 0
+    if ItemsBelow() then below = below + items else above = items end
     local scale = math.min(
         ns.db.barScale,
         (box:GetWidth() - 2 * PREVIEW_PAD) / (width + iconSpace),
@@ -749,15 +788,17 @@ local function StopDrag()
 end
 
 -- Fits the mover around the bar and everything hanging off it: the icon on
--- the left, the item icons above, the cast bar's rim and text box below.
+-- the left, the item icons above or below, the cast bar's rim and text box
+-- below.
 function PlaceMover()
     local mover, frame = main.mover, main.frame
     local pixel = Pixel(frame)
     local height = frame:GetHeight()
     local reach = main.blizzard and Snap(FRAME_REACH, pixel) or 0
     local left = ns.db.barIcon and Snap(ICON_GAP, pixel) + reach + height or 0
-    local top = ns.db.barItems and Snap(ITEM_GAP, pixel) + Snap(ITEM_SIZE, pixel) or 0
-    local bottom = main.textBelow and Snap(TEXT_GAP, pixel) + Snap(TEXT_BOX_HEIGHT, pixel) or reach
+    local items = ns.db.barItems and Snap(ITEM_GAP, pixel) + Snap(ITEM_SIZE, pixel) or 0
+    local top, bottom = 0, Underneath(main, pixel)
+    if ItemsBelow() then bottom = bottom + items else top = items end
     local pad = Snap(MOVER_PAD, pixel)
     mover:ClearAllPoints()
     mover:SetPoint("TOPLEFT", frame, "TOPLEFT", -left - pad, top + pad)

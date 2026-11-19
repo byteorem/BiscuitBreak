@@ -115,7 +115,7 @@ local function Read(out)
             if (rates.mp or rates.mpPct) and (not out.manaEnd or finish > out.manaEnd) then
                 out.mana, out.manaEnd = rates, finish
             end
-            -- One small icon per food or drink, for the row above the bar: the
+            -- One small icon per food or drink, for the row by the bar: the
             -- item's own when it is known, else the effect's.
             local item = EatenItem(id, start)
             local icon = item and C_Item.GetItemIconByID(item)

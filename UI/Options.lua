@@ -14,7 +14,8 @@ local L = ns.L
 local LOGO = "Interface\\AddOns\\BiscuitBreak\\Media\\Icon.tga"
 local QUESTION_ICON = 134400
 
-local WINDOW_WIDTH, WINDOW_HEIGHT = 520, 638
+-- Tall enough for the Recovery Bar page's rows above its buttons.
+local WINDOW_WIDTH, WINDOW_HEIGHT = 520, 666
 local PAD = 20
 -- Pages start under the title bar and the tabs.
 local PAGE_TOP = -65
@@ -297,6 +298,14 @@ local function StyleChoices()
     return { { L["Blizzard"], "Blizzard" }, { L["Flat"], "Flat" } }
 end
 
+local function ItemPositionChoices()
+    local list = {}
+    for i, position in ipairs(ns.Bar.ITEM_POSITIONS) do
+        list[i] = { L[position[1]], position[2] }
+    end
+    return list
+end
+
 local function TextureChoices()
     local list = {}
     for _, name in ipairs(ns.Media.List("statusbar")) do
@@ -559,9 +568,17 @@ local function BuildBarPage(page)
     Checkbox(form, L["Show icon"], L["Show the food or drink's icon at the left of the bar."], iconGet, iconSet,
         ns.Bar.Apply)
     local itemsGet, itemsSet = Saved("barItems")
+    -- Syncs too, so the position below greys out with it.
     Checkbox(form, L["Show items"],
-        L["Show a small icon for each food and drink above the right end of the bar."], itemsGet, itemsSet,
-        ns.Bar.Apply)
+        L["Show a small icon for each food and drink by the bar. Hover one to see the item."], itemsGet, itemsSet,
+        function()
+            ns.Bar.Apply()
+            Options.Sync()
+        end)
+    local itemPosition = Dropdown(form, L["Item position"],
+        L["Where the item icons sit: above or below the bar, starting from its left or right end."],
+        "barItemsPosition", ItemPositionChoices)
+    syncs[#syncs + 1] = function() itemPosition:SetEnabled(ns.db.barItems) end
 
     Heading(form, L["Size"])
     Slider(form, L["Scale"], L["Scale the whole bar, icon and text included."], "barScale", 0.5, 2, 0.05,

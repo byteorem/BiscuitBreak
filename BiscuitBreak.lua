@@ -11,7 +11,7 @@ local DEFAULTS = {
     barWidth = 220,
     barHeight = 16,
     -- "Blizzard" (the game's cast bar art) or "Flat".
-    barStyle = "Blizzard",
+    barStyle = "Flat",
     -- Names from UI/Media.lua. "Default" is the game's own font. The texture
     -- and the colours are for the Flat style.
     barTexture = "Solid",
@@ -20,8 +20,10 @@ local DEFAULTS = {
     -- Font flags: "", "OUTLINE" or "THICKOUTLINE".
     barFontOutline = "",
     barIcon = true,
-    -- A small icon for each food and drink, above the bar's top right.
-    barItems = true,
+    -- A small icon for each food and drink, in a row at one corner of the bar:
+    -- "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT" or "BOTTOMRIGHT" (above or below it).
+    barItems = false,
+    barItemsPosition = "TOPLEFT",
     -- Colours are { red, green, blue }, each from 0 to 1.
     barColor = { 1.0, 0.62, 0.0 },
     fullColor = { 0.2, 0.78, 0.3 },
