@@ -8,7 +8,7 @@ Open the General tab of `/macro` and drag `_BB_Meal` to an action bar. BiscuitBr
 - Skips items above your level
 - Marks estimated health and mana refill times on one countdown
 
-The macro updates after combat, because the game blocks macro edits during a fight.
+The macro updates after combat, because the game blocks macro edits during a fight. A deleted `_BB_Meal` comes back on the next bag change unless you turn off "Update the macro" in the settings.
 
 For World of Warcraft Forever.
 
