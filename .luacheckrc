@@ -84,4 +84,8 @@ read_globals = {
 }
 
 -- Tests run in a stock Lua interpreter, outside the game.
-files["tests"] = { std = "max" }
+-- They stand in for the game's macro functions by defining their own.
+files["tests"] = {
+    std = "max",
+    globals = { "GetNumMacros", "GetMacroInfo", "CreateMacro", "EditMacro", "InCombatLockdown" },
+}
