@@ -1,5 +1,7 @@
 # BiscuitBreak
 
+![The recovery bar counting down a meal, with blue and red ticks marking when mana and health will be full](https://raw.githubusercontent.com/byteorem/BiscuitBreak/main/assets/recovery-bar.png)
+
 Use your strongest food and drink with one macro. The recovery bar turns green when the resources they restore are full.
 
 Open the General tab of `/macro` and drag `_BB_Meal` to an action bar. BiscuitBreak overwrites any existing General macro with that name. `/bb` or the minimap button opens the settings.

@@ -7,5 +7,7 @@ ignore:
   - README.md
   - .luacheckrc
   - blink.toml
+  # Screenshots for the README and the listings.
+  - assets
   # The icon for the CurseForge and Wago listings, uploaded there by hand.
   - Media/ListingIcon.png
