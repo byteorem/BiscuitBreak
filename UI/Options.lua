@@ -596,18 +596,38 @@ local function BuildBarPage(page)
         colors.label:SetAlpha(flat and 1 or 0.4)
     end
 
+    -- Move bar unlocks the bar so it can be dragged; the same button locks it.
+    local moving = false
+    local move, hint
+    local function SetMoving(on)
+        moving = on
+        ns.Bar.SetUnlocked(on)
+        move:SetText(on and L["Lock bar"] or L["Move bar"])
+        DynamicResizeButton_Resize(move)
+        hint:SetShown(on)
+    end
+    move = NewButton(page, L["Move bar"], function()
+        Sound(moving and "IG_MAINMENU_OPTION_CHECKBOX_OFF" or "IG_MAINMENU_OPTION_CHECKBOX_ON")
+        SetMoving(not moving)
+    end)
+    move:SetPoint("BOTTOMLEFT", PAD, 16)
     local reset = NewButton(page, L["Reset position"], function()
         Sound("IG_MAINMENU_OPTION_CHECKBOX_OFF")
         ns.Bar.ResetPosition()
     end)
-    reset:SetPoint("BOTTOMLEFT", PAD, 16)
-    local hint = page:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    reset:SetPoint("LEFT", move, "RIGHT", 6, 0)
+    hint = page:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
     hint:SetPoint("LEFT", reset, "RIGHT", 10, 0)
-    hint:SetText(L["While this tab is open, drag the bar on your screen to move it."])
+    hint:SetText(L["Drag the bar on your screen to move it."])
+    hint:Hide()
 
-    page:SetScript("OnShow", function() ns.Bar.SetUnlocked(true) end)
-    -- Closing it locks the bar, so a sample bar is never left behind.
-    page:SetScript("OnHide", function() ns.Bar.SetUnlocked(false) end)
+    -- The window may have moved since the preview was last placed.
+    page:SetScript("OnShow", ns.Bar.FitPreview)
+    -- Leaving the tab or closing the window locks the bar, so a sample bar is
+    -- never left behind.
+    page:SetScript("OnHide", function()
+        if moving then SetMoving(false) end
+    end)
 end
 
 -- The addon's icon, name, version and what it does, in a strip.

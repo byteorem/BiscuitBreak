@@ -5,7 +5,7 @@
 -- piece is sized and placed on whole screen pixels, so its edges stay sharp
 -- at any scale, and the client moves the fill itself.
 
-local _, ns = ...
+local addonName, ns = ...
 
 local Bar = {}
 ns.Bar = Bar
@@ -69,6 +69,11 @@ local FADE_IN, FADE_OUT, FADE_DELAY = 0.15, 0.4, 0.3
 
 -- Space kept clear around the preview inside its box.
 local PREVIEW_PAD = 12
+
+-- The box over the bar while it can be moved: Edit Mode's blue, and the
+-- space it leaves around everything the bar draws.
+local MOVER_COLOR = { 0.25, 0.6, 1.0 }
+local MOVER_FILL, MOVER_PAD = 0.3, 3
 
 local main -- the bar on screen, built on first use
 local preview -- the copy in the bar settings, if they have been opened
@@ -515,6 +520,11 @@ local function FitPreview()
     AlignToPixels(frame, box)
 end
 
+-- Places the preview again, for when the settings window may have moved.
+function Bar.FitPreview()
+    if preview then FitPreview() end
+end
+
 -- Builds the preview inside box, a frame of a set size: a copy of the bar
 -- showing a sample meal, which follows the saved sizes.
 function Bar.NewPreview(box)
@@ -542,12 +552,15 @@ local function ApplyPosition()
     AlignToPixels(frame, UIParent)
 end
 
+local PlaceMover -- defined with the mover, below
+
 -- Applies the saved look and sizes to the bar and to the preview.
 function Bar.Apply()
     if main then
         Look(main)
         Size(main, ns.db.barScale)
         ApplyPosition()
+        if main.mover then PlaceMover() end
     end
     if preview then FitPreview() end
 end
@@ -689,6 +702,84 @@ local function OnEvent(_, event, _, powerType)
     UpdateResources()
 end
 
+local function StartDrag()
+    main.frame:StartMoving()
+end
+
+local function StopDrag()
+    main.frame:StopMovingOrSizing()
+    SavePosition()
+    ApplyPosition()
+end
+
+-- Fits the mover around the bar and everything hanging off it: the icon on
+-- the left, the item icons above, the cast bar's rim and text box below.
+function PlaceMover()
+    local mover, frame = main.mover, main.frame
+    local pixel = Pixel(frame)
+    local height = frame:GetHeight()
+    local reach = main.blizzard and Snap(FRAME_REACH, pixel) or 0
+    local left = ns.db.barIcon and Snap(ICON_GAP, pixel) + reach + height or 0
+    local top = ns.db.barItems and Snap(ITEM_GAP, pixel) + Snap(ITEM_SIZE, pixel) or 0
+    local bottom = main.textBelow and Snap(TEXT_GAP, pixel) + Snap(TEXT_BOX_HEIGHT, pixel) or reach
+    local pad = Snap(MOVER_PAD, pixel)
+    mover:ClearAllPoints()
+    mover:SetPoint("TOPLEFT", frame, "TOPLEFT", -left - pad, top + pad)
+    mover:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", reach + pad, -bottom - pad)
+    for _, line in ipairs(mover.lines) do
+        if line.vertical then line:SetWidth(pixel) else line:SetHeight(pixel) end
+    end
+end
+
+-- A blue box with the addon's name over the bar, to show it is in move mode.
+-- Dragging it moves the bar. Built the first time the bar is unlocked.
+local function NewMover()
+    local frame = main.frame
+    local mover = CreateFrame("Frame", nil, frame)
+    mover:SetFrameLevel(frame:GetFrameLevel() + 20)
+    mover:Hide()
+
+    local fill = mover:CreateTexture(nil, "BACKGROUND")
+    fill:SetAllPoints()
+    Paint(fill, MOVER_COLOR, MOVER_FILL)
+
+    -- A one-pixel outline: PlaceMover sets each line's thickness.
+    mover.lines = {}
+    for _, side in ipairs({ { "TOP", false }, { "BOTTOM", false }, { "LEFT", true }, { "RIGHT", true } }) do
+        local line = mover:CreateTexture(nil, "BORDER")
+        Paint(line, MOVER_COLOR)
+        line.vertical = side[2]
+        if line.vertical then
+            line:SetPoint("TOP" .. side[1])
+            line:SetPoint("BOTTOM" .. side[1])
+        else
+            line:SetPoint(side[1] .. "LEFT")
+            line:SetPoint(side[1] .. "RIGHT")
+        end
+        mover.lines[#mover.lines + 1] = line
+    end
+
+    local label = mover:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    label:SetPoint("BOTTOMLEFT", mover, "TOPLEFT", 0, 3)
+    label:SetText(addonName)
+
+    mover:EnableMouse(true)
+    mover:RegisterForDrag("LeftButton")
+    mover:SetScript("OnDragStart", StartDrag)
+    mover:SetScript("OnDragStop", StopDrag)
+    mover:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(addonName, 1, 1, 1)
+        GameTooltip:AddLine(L["Drag to move the bar. Click Lock bar in the settings when you are done."],
+            nil, nil, nil, true)
+        GameTooltip:Show()
+    end)
+    mover:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    main.mover = mover
+    PlaceMover()
+end
+
 -- Builds the bar on screen: a bar that can be dragged and that follows the
 -- game.
 local function Build()
@@ -699,12 +790,8 @@ local function Build()
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
     frame:RegisterForDrag("LeftButton")
-    frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        SavePosition()
-        ApplyPosition()
-    end)
+    frame:SetScript("OnDragStart", StartDrag)
+    frame:SetScript("OnDragStop", StopDrag)
     frame:EnableMouse(false)
 
     frame:SetScript("OnUpdate", OnUpdate)
@@ -829,6 +916,11 @@ function Bar.SetUnlocked(on)
     end
     main.frame:EnableMouse(unlocked)
     main.frame:SetFrameStrata(unlocked and "FULLSCREEN_DIALOG" or "MEDIUM")
+    if unlocked and not main.mover then NewMover() end
+    if main.mover then
+        if unlocked then PlaceMover() end
+        main.mover:SetShown(unlocked)
+    end
     Render()
 end
 
