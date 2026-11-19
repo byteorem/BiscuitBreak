@@ -16,4 +16,6 @@ For World of Warcraft Forever.
 
 ## Install
 
-Copy the `BiscuitBreak` folder into `Interface\AddOns`.
+Get it on [CurseForge](https://www.curseforge.com/wow/addons/biscuitbreak) or [Wago](https://addons.wago.io/addons/bGoYVJ60), or download the zip from [GitHub releases](https://github.com/byteorem/BiscuitBreak/releases).
+
+Feedback and bug reports are welcome on [GitHub](https://github.com/byteorem/BiscuitBreak/issues).
